@@ -1,11 +1,29 @@
-import { SignUpForm } from '@/components/auth/signup-form'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { RegisterForm } from "@/components/forms/registerForm";
+import Link from "next/link";
 
-export default function Page() {
+export default function RegisterPage() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <SignUpForm />
-      </div>
-    </div>
-  )
+    <Card>
+      <CardHeader>
+        <CardTitle>Create Account</CardTitle>
+        <CardDescription>Get started with HospitalMS today</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <RegisterForm />
+        <p className="text-center text-sm text-gray-600 mt-4">
+          Already have an account?{" "}
+          <Link href="/login" className="text-blue-600 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
+  );
 }

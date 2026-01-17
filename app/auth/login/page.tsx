@@ -1,11 +1,29 @@
-import { LoginForm } from '@/components/auth/login-form'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { LoginForm } from "@/components/forms/loginForm";
+import Link from "next/link";
 
-export default function Page() {
+export default function LoginPage() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
+    <Card>
+      <CardHeader>
+        <CardTitle>Welcome Back</CardTitle>
+        <CardDescription>Sign in to your account to continue</CardDescription>
+      </CardHeader>
+      <CardContent>
         <LoginForm />
-      </div>
-    </div>
-  )
+        <p className="text-center text-sm text-gray-600 mt-4">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-blue-600 hover:underline">
+            Sign up
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
