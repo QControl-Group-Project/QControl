@@ -1,0 +1,280 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/use-auth";
+import { PageHeader } from "@/components/layouts/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { EmptyState } from "@/components/layouts/EmptyState";
+import { Users } from "lucide-react";
+import { Profile, StaffAssignment } from "@/lib/types";
+import { toast } from "sonner";
+
+type InviteForm = {
+  email: string;
+  role: "staff" | "doctor";
+};
+
+export default function AdminStaffPage() {
+  const { profile } = useAuth();
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [staff, setStaff] = useState<StaffAssignment[]>([]);
+  const [staffProfilesById, setStaffProfilesById] = useState<
+    Record<string, Profile>
+  >({});
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [invite, setInvite] = useState<InviteForm>({
+    email: "",
+    role: "staff",
+  });
+  const [selectedProfileId, setSelectedProfileId] = useState("");
+  const supabase = createClient();
+
+  const loadHospital = async () => {
+    if (!profile) return;
+    const { data } = await supabase
+      .from("hospitals")
+      .select("id")
+      .eq("admin_id", profile.id)
+      .single();
+    setHospitalId(data?.id ?? null);
+  };
+
+  const loadStaff = async (hId: string) => {
+    const { data } = await supabase
+      .from("staff_assignments")
+      .select("*")
+      .eq("hospital_id", hId)
+      .order("created_at", { ascending: false });
+
+    const assignments = (data as StaffAssignment[]) || [];
+    setStaff(assignments);
+
+    const staffIds = assignments.map((item) => item.staff_id);
+    if (staffIds.length === 0) {
+      setStaffProfilesById({});
+      return;
+    }
+
+    const { data: staffProfiles } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", staffIds);
+
+    const map: Record<string, Profile> = {};
+    (staffProfiles as Profile[] | null)?.forEach((p) => {
+      map[p.id] = p;
+    });
+    setStaffProfilesById(map);
+  };
+
+  const loadProfiles = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("role", ["staff", "doctor"]);
+
+    setProfiles((data as Profile[]) || []);
+  };
+
+  useEffect(() => {
+    if (profile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadHospital();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadProfiles();
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (hospitalId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadStaff(hospitalId);
+    }
+  }, [hospitalId]);
+
+  const staffProfiles = useMemo(
+    () => profiles.filter((p) => p.role === "staff"),
+    [profiles]
+  );
+
+  const handleInvite = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!hospitalId) return;
+
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const { error } = await supabase.from("invitations").insert({
+      hospital_id: hospitalId,
+      email: invite.email,
+      role: invite.role,
+      token,
+      expires_at: expiresAt.toISOString(),
+    });
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Invitation created");
+    setInvite({ email: "", role: invite.role });
+  };
+
+  const handleAssignStaff = async () => {
+    if (!hospitalId || !selectedProfileId) return;
+    const { error } = await supabase.from("staff_assignments").insert({
+      staff_id: selectedProfileId,
+      hospital_id: hospitalId,
+      role: "staff",
+      is_active: true,
+    });
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Staff assigned");
+    setSelectedProfileId("");
+    loadStaff(hospitalId);
+  };
+
+  if (!hospitalId) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={Users}
+          title="No hospital found"
+          description="Create your hospital profile first."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title="Staff"
+        description="Manage staff assignments for your hospital"
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Assign Existing Staff</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Label htmlFor="staffProfile">Select staff profile</Label>
+            <select
+              id="staffProfile"
+              className="w-full p-2 border rounded-md"
+              value={selectedProfileId}
+              onChange={(event) => setSelectedProfileId(event.target.value)}
+            >
+              <option value="">Choose staff...</option>
+              {staffProfiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.full_name} ({p.email})
+                </option>
+              ))}
+            </select>
+            <Button onClick={handleAssignStaff} disabled={!selectedProfileId}>
+              Assign Staff
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Invite Staff or Doctor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleInvite} className="space-y-3">
+              <div>
+                <Label htmlFor="inviteEmail">Email</Label>
+                <Input
+                  id="inviteEmail"
+                  type="email"
+                  value={invite.email}
+                  onChange={(event) =>
+                    setInvite((prev) => ({
+                      ...prev,
+                      email: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="inviteRole">Role</Label>
+                <select
+                  id="inviteRole"
+                  className="w-full p-2 border rounded-md"
+                  value={invite.role}
+                  onChange={(event) =>
+                    setInvite((prev) => ({
+                      ...prev,
+                      role: event.target.value as InviteForm["role"],
+                    }))
+                  }
+                >
+                  <option value="staff">Staff</option>
+                  <option value="doctor">Doctor</option>
+                </select>
+              </div>
+              <Button type="submit">Create Invitation</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Staff</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {staff.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No staff assigned"
+              description="Assign staff to manage hospital queues."
+            />
+          ) : (
+            <div className="space-y-3">
+              {staff.map((item) => {
+                const staffProfile = staffProfilesById[item.staff_id];
+                return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between border rounded-md p-3"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {staffProfile?.full_name ?? "Staff Member"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {staffProfile?.email ?? item.staff_id}
+                    </p>
+                    <p className="text-sm text-gray-500 capitalize">
+                      {item.role}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {item.is_active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+

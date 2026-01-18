@@ -1,40 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-
-type UserRole = "admin" | "doctor" | "staff" | "patient";
-interface Profile {
-  id: string;
-  email: string;
-  full_name: string;
-  role: UserRole;
-  phone?: string;
-  avatar_url?: string;
-  date_of_birth?: string;
-  address?: string;
-  gender?: "male" | "female" | "other";
-  created_at: string;
-  updated_at: string;
-}
-
-interface Hospital {
-  id: string;
-  admin_id: string;
-  name: string;
-  description?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  phone?: string;
-  email?: string;
-  logo_url?: string;
-  website?: string;
-  opening_time?: string;
-  closing_time?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { Profile, Hospital } from "@/lib/types";
 
 interface AppState {
   // User
