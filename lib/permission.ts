@@ -1,4 +1,4 @@
-type UserRole = "admin" | "doctor" | "staff" | "patient";
+import { UserRole } from "./types";
 
 export const PERMISSIONS = {
   MANAGE_HOSPITAL: ["admin"],
