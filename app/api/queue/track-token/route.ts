@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -13,9 +13,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminSupabaseClient();
 
-    // Get token details
     const { data: token, error: tokenError } = await supabase
       .from("queue_tokens")
       .select("*, queues(name, estimated_wait_time), hospitals(name, address)")
@@ -26,12 +25,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Token not found" }, { status: 404 });
     }
 
-    // Get position in queue
     const { data: position } = await supabase.rpc("get_token_position", {
       p_token_id: tokenId,
     });
 
-    // Get estimated wait time
     const estimatedWait = position * (token.queues.estimated_wait_time || 15);
 
     return NextResponse.json({
