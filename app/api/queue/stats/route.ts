@@ -15,7 +15,6 @@ export async function GET(request: Request) {
 
     const supabase = await createServerSupabaseClient();
 
-    // Get queue stats
     const { data: stats, error } = await supabase
       .rpc("get_queue_stats", { p_queue_id: queueId })
       .single();
