@@ -41,7 +41,6 @@ export default function AdminAppointmentsPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadAppointments();
     }
   }, [profile]);

@@ -2,12 +2,13 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/lib/hooks/use-auth";
+import { useSupabaseAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -34,7 +35,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, profile, loading, supabase } = useAuth();
+  const { user, profile, loading, profileLoading, supabase } = useSupabaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -51,7 +52,7 @@ export default function DashboardLayout({
     router.push("/");
   };
 
-  if (loading) {
+  if (loading || (user && profileLoading)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">Loading...</div>
@@ -59,9 +60,28 @@ export default function DashboardLayout({
     );
   }
 
-  if (!user || !profile) return null;
+  if (!user) return null;
 
-  // Navigation items based on role
+  if (!profile) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-sm text-gray-600">
+            We could not load your profile. Please sign in again.
+          </p>
+          <Button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push("/login");
+            }}
+          >
+            Go to login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const getNavItems = () => {
     const baseUrl = `/${profile.role}`;
 
@@ -199,6 +219,7 @@ export default function DashboardLayout({
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuGroup>
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -217,6 +238,7 @@ export default function DashboardLayout({
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
