@@ -37,7 +37,6 @@ export default function QueuesPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadQueues();
     }
   }, [profile]);

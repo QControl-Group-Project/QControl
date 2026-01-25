@@ -35,7 +35,6 @@ export default function StaffDashboard() {
     if (!profile) return;
 
     try {
-      // Get staff assignment
       const { data: staffAssignment } = await supabase
         .from("staff_assignments")
         .select("*, hospitals(name, address)")
@@ -46,7 +45,6 @@ export default function StaffDashboard() {
       if (staffAssignment) {
         setAssignment(staffAssignment as StaffAssignment);
 
-        // Get assigned queues
         const { data: queueAssignments } = await supabase
           .from("queue_staff_assignments")
           .select("*, queues(*)")
@@ -59,7 +57,6 @@ export default function StaffDashboard() {
           ) || [];
         setQueues(queuesData);
 
-        // Calculate stats across all assigned queues
         const today = new Date().toISOString().split("T")[0];
         const queueIds = queuesData.map((q) => q.id);
 
@@ -82,7 +79,6 @@ export default function StaffDashboard() {
             (t) => t.status === "waiting"
           ).length;
 
-          // Calculate average wait time for served tokens
           const servedWithTimes = typedTokens.filter(
             (
               t
@@ -109,7 +105,6 @@ export default function StaffDashboard() {
           });
         }
 
-        // Get today's appointments for the hospital
         const { data: appointments } = await supabase
           .from("appointments")
           .select("*, doctors(profiles(full_name))")
@@ -132,7 +127,6 @@ export default function StaffDashboard() {
     if (profile) {
       loadStaffData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   if (loading) return <LoadingSpinner text="Loading dashboard..." />;

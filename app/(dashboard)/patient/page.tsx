@@ -215,7 +215,6 @@ export default function PatientDashboard() {
                       <div className="flex items-center gap-4">
                         <div className="text-center">
                           <div className="text-3xl font-bold text-blue-600">
-                            #{token.token_number}
                           </div>
                           <Badge
                             variant={

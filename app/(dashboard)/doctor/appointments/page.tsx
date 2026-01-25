@@ -18,7 +18,6 @@ export default function DoctorAppointmentsPage() {
   const loadDoctorAndAppointments = async () => {
     if (!profile) return;
 
-    // Get doctor
     const { data: doctorData } = await supabase
       .from("doctors")
       .select("*")

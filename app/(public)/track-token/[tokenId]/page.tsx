@@ -1,13 +1,17 @@
+ "use client";
+
+import { useParams } from "next/navigation";
 import { TokenTrackingCard } from "@/components/queue/TokenTrackingCard";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-export default function TrackTokenPage({
-  params,
-}: {
-  params: { tokenId: string };
-}) {
+export default function TrackTokenPage() {
+  const params = useParams<{ tokenId?: string | string[] }>();
+  const tokenId = Array.isArray(params.tokenId)
+    ? params.tokenId[0]
+    : params.tokenId;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
@@ -17,7 +21,7 @@ export default function TrackTokenPage({
             Back to Home
           </Button>
         </Link>
-        <TokenTrackingCard tokenId={params.tokenId} />
+        {tokenId ? <TokenTrackingCard tokenId={tokenId} /> : null}
       </div>
     </div>
   );

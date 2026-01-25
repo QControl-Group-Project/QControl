@@ -35,7 +35,6 @@ export default function StaffQueueIndexPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadQueues();
     }
   }, [profile]);

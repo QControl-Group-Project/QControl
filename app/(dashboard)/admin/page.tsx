@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Users, Calendar, Clock, Stethoscope } from "lucide-react";
@@ -24,93 +24,103 @@ export default function AdminDashboard() {
     []
   );
   const [activeQueues, setActiveQueues] = useState<Queue[]>([]);
-  const supabase = createClient();
-
-  const loadHospitalAndStats = async () => {
-    if (!profile) return;
-
-    const { data: hospitalData } = await supabase
-      .from("hospitals")
-      .select("*")
-      .eq("admin_id", profile.id)
-      .single();
-
-    if (hospitalData) {
-      setHospital(hospitalData as Hospital);
-
-      const today = new Date().toISOString().split("T")[0];
-
-      const [
-        doctors,
-        staff,
-        queues,
-        appointments,
-        tokens,
-        activeTokensData,
-        activeQueuesData,
-        recentAppts,
-      ] = await Promise.all([
-        supabase
-          .from("doctors")
-          .select("*", { count: "exact", head: true })
-          .eq("hospital_id", hospitalData.id),
-        supabase
-          .from("staff_assignments")
-          .select("*", { count: "exact", head: true })
-          .eq("hospital_id", hospitalData.id),
-        supabase
-          .from("queues")
-          .select("*", { count: "exact", head: true })
-          .eq("hospital_id", hospitalData.id),
-        supabase
-          .from("appointments")
-          .select("*", { count: "exact", head: true })
-          .eq("hospital_id", hospitalData.id)
-          .eq("appointment_date", today),
-        supabase
-          .from("queue_tokens")
-          .select("*", { count: "exact", head: true })
-          .eq("hospital_id", hospitalData.id)
-          .gte("created_at", today),
-        supabase
-          .from("queue_tokens")
-          .select("*", { count: "exact", head: true })
-          .eq("hospital_id", hospitalData.id)
-          .in("status", ["waiting", "called", "serving"]),
-        supabase
-          .from("queues")
-          .select("*, departments(name)")
-          .eq("hospital_id", hospitalData.id)
-          .eq("is_active", true)
-          .limit(5),
-        supabase
-          .from("appointments")
-          .select("*, doctors(profiles(full_name))")
-          .eq("hospital_id", hospitalData.id)
-          .gte("appointment_date", today)
-          .order("appointment_date", { ascending: true })
-          .limit(5),
-      ]);
-
-      setStats({
-        totalDoctors: doctors.count || 0,
-        totalStaff: staff.count || 0,
-        totalQueues: queues.count || 0,
-        todayAppointments: appointments.count || 0,
-        todayTokens: tokens.count || 0,
-        activeTokens: activeTokensData.count || 0,
-      });
-
-      setActiveQueues((activeQueuesData.data as Queue[]) || []);
-      setRecentAppointments((recentAppts.data as Appointment[]) || []);
-    }
-  };
+  
+  const supabase = getSupabaseClient();
 
   useEffect(() => {
+    const loadHospitalAndStats = async () => {
+      if (!profile) return;
+
+      try {
+        const { data: hospitalData, error: hospitalError } = await supabase
+          .from("hospitals")
+          .select("*")
+          .eq("admin_id", profile.id)
+          .single();
+
+        if (hospitalError) {
+          console.error("Error loading hospital:", hospitalError);
+          return;
+        }
+
+        if (hospitalData) {
+          setHospital(hospitalData as Hospital);
+
+          const today = new Date().toISOString().split("T")[0];
+
+          const [
+            doctors,
+            staff,
+            queues,
+            appointments,
+            tokens,
+            activeTokensData,
+            activeQueuesData,
+            recentAppts,
+          ] = await Promise.all([
+            supabase
+              .from("doctors")
+              .select("*", { count: "exact", head: true })
+              .eq("hospital_id", hospitalData.id),
+            supabase
+              .from("staff_assignments")
+              .select("*", { count: "exact", head: true })
+              .eq("hospital_id", hospitalData.id),
+            supabase
+              .from("queues")
+              .select("*", { count: "exact", head: true })
+              .eq("hospital_id", hospitalData.id),
+            supabase
+              .from("appointments")
+              .select("*", { count: "exact", head: true })
+              .eq("hospital_id", hospitalData.id)
+              .eq("appointment_date", today),
+            supabase
+              .from("queue_tokens")
+              .select("*", { count: "exact", head: true })
+              .eq("hospital_id", hospitalData.id)
+              .gte("created_at", today),
+            supabase
+              .from("queue_tokens")
+              .select("*", { count: "exact", head: true })
+              .eq("hospital_id", hospitalData.id)
+              .in("status", ["waiting", "called", "serving"]),
+            supabase
+              .from("queues")
+              .select("*, departments(name)")
+              .eq("hospital_id", hospitalData.id)
+              .eq("is_active", true)
+              .limit(5),
+            supabase
+              .from("appointments")
+              .select("*, doctors(profiles(full_name))")
+              .eq("hospital_id", hospitalData.id)
+              .gte("appointment_date", today)
+              .order("appointment_date", { ascending: true })
+              .limit(5),
+          ]);
+
+          setStats({
+            totalDoctors: doctors.count || 0,
+            totalStaff: staff.count || 0,
+            totalQueues: queues.count || 0,
+            todayAppointments: appointments.count || 0,
+            todayTokens: tokens.count || 0,
+            activeTokens: activeTokensData.count || 0,
+          });
+
+          setActiveQueues((activeQueuesData.data as Queue[]) || []);
+          setRecentAppointments((recentAppts.data as Appointment[]) || []);
+        }
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+      }
+    };
+
     if (profile) {
       loadHospitalAndStats();
     }
-  }, [profile]);
+  }, [profile, supabase]);
 
   return (
     <div className="p-6 space-y-6">
@@ -177,7 +187,7 @@ export default function AdminDashboard() {
               {recentAppointments.map((apt) => (
                 <div
                   key={apt.id}
-                  className="flex items-center justify-between border-b pb-3"
+                  className="flex items-center justify-between border-b pb-3 last:border-b-0"
                 >
                   <div>
                     <p className="font-medium">{apt.patient_name}</p>
@@ -220,7 +230,7 @@ export default function AdminDashboard() {
               {activeQueues.map((queue) => (
                 <div
                   key={queue.id}
-                  className="flex items-center justify-between border-b pb-3"
+                  className="flex items-center justify-between border-b pb-3 last:border-b-0"
                 >
                   <div>
                     <p className="font-medium">{queue.name}</p>

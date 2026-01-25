@@ -64,7 +64,6 @@ export default function BookAppointmentPage() {
     if (!selectedDate) return;
     const supabase = createClient();
 
-    // Get doctor's schedule for the selected day
     const dayOfWeek = selectedDate.getDay();
     const { data: schedules } = await supabase
       .from("doctor_schedules")
@@ -78,7 +77,6 @@ export default function BookAppointmentPage() {
       return;
     }
 
-    // Generate time slots
     const slots = [];
     for (const schedule of schedules) {
       const [startHour, startMin] = schedule.start_time.split(":").map(Number);
@@ -94,7 +92,6 @@ export default function BookAppointmentPage() {
           .toString()
           .padStart(2, "0")}:00`;
 
-        // Check if slot is available
         const { data: isAvailable } = await supabase.rpc(
           "check_doctor_availability",
           {
@@ -119,7 +116,6 @@ export default function BookAppointmentPage() {
 
     try {
       const supabase = createClient();
-      // Get next appointment number
       const { data: appointmentNumber } = await supabase.rpc(
         "get_next_appointment_number",
         {
@@ -128,7 +124,6 @@ export default function BookAppointmentPage() {
         }
       );
 
-      // Create appointment
       const { error } = await supabase.from("appointments").insert({
         hospital_id: selectedHospital,
         doctor_id: selectedDoctor,
@@ -145,7 +140,6 @@ export default function BookAppointmentPage() {
       if (error) throw error;
 
       toast.success("Appointment booked successfully!");
-      // Reset form or redirect
     } catch (error) {
       toast.error("Failed to book appointment");
       console.error(error);

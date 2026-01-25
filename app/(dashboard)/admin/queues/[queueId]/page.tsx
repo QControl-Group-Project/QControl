@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,43 +11,47 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { EmptyState } from "@/components/layouts/EmptyState";
 import { ClipboardList } from "lucide-react";
 
-export default function AdminQueueDetailPage({
-  params,
-}: {
-  params: { queueId: string };
-}) {
+export default function AdminQueueDetailPage() {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [tokens, setTokens] = useState<QueueToken[]>([]);
   const [stats, setStats] = useState<QueueStats | null>(null);
   const supabase = createClient();
+  const params = useParams<{ queueId?: string | string[] }>();
+  const queueId = Array.isArray(params.queueId)
+    ? params.queueId[0]
+    : params.queueId;
 
   const loadQueue = async () => {
+    if (!queueId) return;
     const { data } = await supabase
       .from("queues")
       .select("*, departments(name)")
-      .eq("id", params.queueId)
+      .eq("id", queueId)
       .single();
     setQueue((data as Queue) || null);
   };
 
   const loadTokens = async () => {
+    if (!queueId) return;
     const { data } = await supabase
       .from("queue_tokens")
       .select("*")
-      .eq("queue_id", params.queueId)
+      .eq("queue_id", queueId)
       .gte("created_at", new Date().toISOString().split("T")[0])
       .order("token_number", { ascending: true });
     setTokens((data as QueueToken[]) || []);
   };
 
   const loadStats = async () => {
+    if (!queueId) return;
     const { data } = await supabase
-      .rpc("get_queue_stats", { p_queue_id: params.queueId })
+      .rpc("get_queue_stats", { p_queue_id: queueId })
       .single();
     setStats((data as QueueStats) || null);
   };
 
   useEffect(() => {
+    if (!queueId) return;
     loadQueue();
     loadTokens();
     loadStats();
@@ -59,7 +64,7 @@ export default function AdminQueueDetailPage({
           event: "*",
           schema: "public",
           table: "queue_tokens",
-          filter: `queue_id=eq.${params.queueId}`,
+          filter: `queue_id=eq.${queueId}`,
         },
         () => {
           loadTokens();
@@ -71,7 +76,7 @@ export default function AdminQueueDetailPage({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [params.queueId]);
+  }, [queueId]);
 
   const callToken = async (tokenId: string) => {
     await supabase

@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/layouts/EmptyState";
 import { Users } from "lucide-react";
 import { Profile, StaffAssignment } from "@/lib/types";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api-client";
 
 type InviteForm = {
   email: string;
@@ -82,16 +83,13 @@ export default function AdminStaffPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadHospital();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadProfiles();
     }
   }, [profile]);
 
   useEffect(() => {
     if (hospitalId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadStaff(hospitalId);
     }
   }, [hospitalId]);
@@ -105,19 +103,23 @@ export default function AdminStaffPage() {
     event.preventDefault();
     if (!hospitalId) return;
 
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      const result = await apiClient.post<{ success: boolean; error?: string }>(
+        "/invitations/send",
+        {
+          hospital_id: hospitalId,
+          email: invite.email,
+          role: invite.role,
+        }
+      );
 
-    const { error } = await supabase.from("invitations").insert({
-      hospital_id: hospitalId,
-      email: invite.email,
-      role: invite.role,
-      token,
-      expires_at: expiresAt.toISOString(),
-    });
-
-    if (error) {
-      toast.error(error.message);
+      if (!result?.success) {
+        toast.error(result?.error || "Failed to send invitation");
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to send invitation:", error);
+      toast.error("Failed to send invitation");
       return;
     }
 

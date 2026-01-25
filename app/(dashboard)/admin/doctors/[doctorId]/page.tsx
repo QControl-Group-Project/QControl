@@ -42,9 +42,7 @@ export default function DoctorDetailsPage({
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDoctor();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSchedules();
   }, [params.doctorId]);
 

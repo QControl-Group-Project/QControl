@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/layouts/EmptyState";
 import { Hospital, Profile, Department, Specialization } from "@/lib/types";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
 
 type DoctorFormState = {
   profile_id: string;
@@ -83,7 +84,6 @@ export default function NewDoctorPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadData();
     }
   }, [profile]);
@@ -121,19 +121,23 @@ export default function NewDoctorPage() {
     event.preventDefault();
     if (!hospital) return;
 
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      const result = await apiClient.post<{ success: boolean; error?: string }>(
+        "/invitations/send",
+        {
+          hospital_id: hospital.id,
+          email: invite.email,
+          role: "doctor",
+        }
+      );
 
-    const { error } = await supabase.from("invitations").insert({
-      hospital_id: hospital.id,
-      email: invite.email,
-      role: "doctor",
-      token,
-      expires_at: expiresAt.toISOString(),
-    });
-
-    if (error) {
-      toast.error(error.message);
+      if (!result?.success) {
+        toast.error(result?.error || "Failed to send invitation");
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to send invitation:", error);
+      toast.error("Failed to send invitation");
       return;
     }
 

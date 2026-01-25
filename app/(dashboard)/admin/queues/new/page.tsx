@@ -60,7 +60,6 @@ export default function NewQueuePage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadData();
     }
   }, [profile]);
