@@ -17,7 +17,6 @@ export async function GET(request: Request) {
     const supabase = await createServerSupabaseClient();
     const dayOfWeek = new Date(date).getDay();
 
-    // Get doctor's schedule for the day
     const { data: schedules } = await supabase
       .from("doctor_schedules")
       .select("*")
@@ -33,7 +32,6 @@ export async function GET(request: Request) {
       });
     }
 
-    // Generate time slots
     const slots = [];
     for (const schedule of schedules) {
       const [startHour, startMin] = schedule.start_time.split(":").map(Number);
@@ -49,7 +47,6 @@ export async function GET(request: Request) {
           .toString()
           .padStart(2, "0")}:00`;
 
-        // Check if slot is available
         const { data: isAvailable } = await supabase.rpc(
           "check_doctor_availability",
           {

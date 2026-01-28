@@ -28,7 +28,7 @@ export default function StaffPatientsPage() {
 
     const { data: assignment } = await supabase
       .from("staff_assignments")
-      .select("hospital_id")
+      .select("business_id")
       .eq("staff_id", profile.id)
       .eq("is_active", true)
       .single();
@@ -41,7 +41,7 @@ export default function StaffPatientsPage() {
     const { data } = await supabase
       .from("appointments")
       .select("*")
-      .eq("hospital_id", assignment.hospital_id)
+      .eq("business_id", assignment.business_id)
       .order("appointment_date", { ascending: false });
 
     setAppointments((data as Appointment[]) || []);
@@ -49,7 +49,6 @@ export default function StaffPatientsPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadPatients();
     }
   }, [profile]);
@@ -74,12 +73,12 @@ export default function StaffPatientsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader title="Patients" description="Assist with patient flow" />
+      <PageHeader title="Customers" description="Assist with customer flow" />
       {patients.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No patients yet"
-          description="Patients will appear here once appointments are booked."
+          title="No customers yet"
+          description="Customers will appear here once appointments are booked."
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

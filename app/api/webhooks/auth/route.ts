@@ -1,7 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-// This webhook handles auth events from Supabase
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -12,14 +11,11 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
 
     switch (type) {
-      case "INSERT": // User signup
-        // Profile is created automatically by trigger
-        // You can add additional logic here
+      case "INSERT": 
         console.log("New user signed up:", record.id);
         break;
 
-      case "UPDATE": // User update
-        // Sync any changes to profile if needed
+      case "UPDATE": 
         if (record.email) {
           await supabase
             .from("profiles")
@@ -28,8 +24,7 @@ export async function POST(request: Request) {
         }
         break;
 
-      case "DELETE": // User deletion
-        // Cleanup related data if needed
+      case "DELETE": 
         console.log("User deleted:", record.id);
         break;
     }

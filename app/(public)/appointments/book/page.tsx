@@ -11,12 +11,12 @@ import { Card } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Doctor, Hospital } from "@/lib/types";
+import { Doctor, Business } from "@/lib/types";
 
 export default function BookAppointmentPage() {
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [selectedHospital, setSelectedHospital] = useState("");
+  const [selectedBusiness, setSelectedBusiness] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -26,14 +26,14 @@ export default function BookAppointmentPage() {
   const [patientEmail, setPatientEmail] = useState("");
   const [symptoms, setSymptoms] = useState("");
   useEffect(() => {
-    loadHospitals();
+    loadBusinesses();
   }, []);
 
   useEffect(() => {
-    if (selectedHospital) {
+    if (selectedBusiness) {
       loadDoctors();
     }
-  }, [selectedHospital]);
+  }, [selectedBusiness]);
 
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
@@ -41,13 +41,13 @@ export default function BookAppointmentPage() {
     }
   }, [selectedDoctor, selectedDate]);
 
-  const loadHospitals = async () => {
+  const loadBusinesses = async () => {
     const supabase = createClient();
     const { data } = await supabase
-      .from("hospitals")
+      .from("businesses")
       .select("*")
       .eq("is_active", true);
-    setHospitals((data as Hospital[]) || []);
+    setBusinesses((data as Business[]) || []);
   };
 
   const loadDoctors = async () => {
@@ -55,7 +55,7 @@ export default function BookAppointmentPage() {
     const { data } = await supabase
       .from("doctors")
       .select("*, profiles(full_name), specializations(name)")
-      .eq("hospital_id", selectedHospital)
+      .eq("business_id", selectedBusiness)
       .eq("is_available", true);
     setDoctors((data as Doctor[]) || []);
   };
@@ -64,7 +64,6 @@ export default function BookAppointmentPage() {
     if (!selectedDate) return;
     const supabase = createClient();
 
-    // Get doctor's schedule for the selected day
     const dayOfWeek = selectedDate.getDay();
     const { data: schedules } = await supabase
       .from("doctor_schedules")
@@ -78,7 +77,6 @@ export default function BookAppointmentPage() {
       return;
     }
 
-    // Generate time slots
     const slots = [];
     for (const schedule of schedules) {
       const [startHour, startMin] = schedule.start_time.split(":").map(Number);
@@ -94,7 +92,6 @@ export default function BookAppointmentPage() {
           .toString()
           .padStart(2, "0")}:00`;
 
-        // Check if slot is available
         const { data: isAvailable } = await supabase.rpc(
           "check_doctor_availability",
           {
@@ -119,7 +116,6 @@ export default function BookAppointmentPage() {
 
     try {
       const supabase = createClient();
-      // Get next appointment number
       const { data: appointmentNumber } = await supabase.rpc(
         "get_next_appointment_number",
         {
@@ -128,9 +124,8 @@ export default function BookAppointmentPage() {
         }
       );
 
-      // Create appointment
       const { error } = await supabase.from("appointments").insert({
-        hospital_id: selectedHospital,
+          business_id: selectedBusiness,
         doctor_id: selectedDoctor,
         appointment_number: appointmentNumber,
         patient_name: patientName,
@@ -144,10 +139,9 @@ export default function BookAppointmentPage() {
 
       if (error) throw error;
 
-      toast.success("Appointment booked successfully!");
-      // Reset form or redirect
+      toast.success("Booking confirmed!");
     } catch (error) {
-      toast.error("Failed to book appointment");
+      toast.error("Failed to book");
       console.error(error);
     }
   };
@@ -155,19 +149,18 @@ export default function BookAppointmentPage() {
   return (
     <div className="container mx-auto p-6">
       <Card className="max-w-3xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Book Appointment</h1>
+        <h1 className="text-3xl font-bold mb-6">Book a Service</h1>
         <form onSubmit={bookAppointment} className="space-y-6">
-          {/* Hospital Selection */}
           <div>
-            <Label>Select Hospital</Label>
+            <Label>Select Business</Label>
             <select
-              value={selectedHospital}
-              onChange={(e) => setSelectedHospital(e.target.value)}
+              value={selectedBusiness}
+              onChange={(e) => setSelectedBusiness(e.target.value)}
               className="w-full p-2 border rounded"
               required
             >
-              <option value="">Choose hospital...</option>
-              {hospitals.map((h) => (
+              <option value="">Choose business...</option>
+              {businesses.map((h) => (
                 <option key={h.id} value={h.id}>
                   {h.name}
                 </option>
@@ -175,20 +168,19 @@ export default function BookAppointmentPage() {
             </select>
           </div>
 
-          {/* Doctor Selection */}
-          {selectedHospital && (
+          {selectedBusiness && (
             <div>
-              <Label>Select Doctor</Label>
+              <Label>Select Provider</Label>
               <select
                 value={selectedDoctor}
                 onChange={(e) => setSelectedDoctor(e.target.value)}
                 className="w-full p-2 border rounded"
                 required
               >
-                <option value="">Choose doctor...</option>
+                <option value="">Choose provider...</option>
                 {doctors.map((d) => (
                   <option key={d.id} value={d.id}>
-                    Dr. {d.profiles?.full_name ?? "Doctor"} -{" "}
+                    {d.profiles?.full_name ?? "Provider"} -{" "}
                     {d.specializations?.name ?? "Specialty"}
                   </option>
                 ))}
@@ -196,7 +188,6 @@ export default function BookAppointmentPage() {
             </div>
           )}
 
-          {/* Date Selection */}
           {selectedDoctor && (
             <div>
               <Label>Select Date</Label>
@@ -209,7 +200,6 @@ export default function BookAppointmentPage() {
             </div>
           )}
 
-          {/* Time Slot Selection */}
           {availableSlots.length > 0 && (
             <div>
               <Label>Available Time Slots</Label>
@@ -228,7 +218,6 @@ export default function BookAppointmentPage() {
             </div>
           )}
 
-          {/* Patient Information */}
           {selectedSlot && (
             <>
               <div>
@@ -260,7 +249,7 @@ export default function BookAppointmentPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="symptoms">Symptoms / Reason</Label>
+                <Label htmlFor="symptoms">Reason / Notes</Label>
                 <textarea
                   id="symptoms"
                   value={symptoms}
@@ -269,7 +258,7 @@ export default function BookAppointmentPage() {
                 />
               </div>
               <Button type="submit" className="w-full">
-                Book Appointment
+                Book Service
               </Button>
             </>
           )}

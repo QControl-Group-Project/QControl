@@ -7,9 +7,9 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const {
-      hospital_id,
+      business_id,
       doctor_id,
-      patient_id, // Optional for unauthenticated users
+      patient_id, 
       patient_name,
       patient_phone,
       patient_email,
@@ -21,9 +21,8 @@ export async function POST(request: Request) {
       symptoms,
     } = body;
 
-    // Validate required fields
     if (
-      !hospital_id ||
+      !business_id ||
       !doctor_id ||
       !patient_name ||
       !appointment_date ||
@@ -35,7 +34,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check doctor availability
     const { data: isAvailable } = await supabase.rpc(
       "check_doctor_availability",
       {
@@ -52,7 +50,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get next appointment number
     const { data: appointmentNumber } = await supabase.rpc(
       "get_next_appointment_number",
       {
@@ -61,11 +58,10 @@ export async function POST(request: Request) {
       }
     );
 
-    // Create appointment
     const { data: appointment, error: insertError } = await supabase
       .from("appointments")
       .insert({
-        hospital_id,
+        business_id,
         doctor_id,
         patient_id,
         appointment_number: appointmentNumber,
@@ -78,10 +74,11 @@ export async function POST(request: Request) {
         appointment_time,
         appointment_type: appointment_type || "consultation",
         symptoms,
-        status: "scheduled",
+        status: "pending",
+        approval_status: "pending",
       })
       .select(
-        "*, doctors(profiles(full_name), specializations(name)), hospitals(name)"
+        "*, doctors(profiles(full_name), specializations(name)), businesses(name)"
       )
       .single();
 
@@ -93,7 +90,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: Send confirmation email/SMS
 
     return NextResponse.json({
       success: true,

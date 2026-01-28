@@ -35,7 +35,6 @@ export default function StaffQueueIndexPage() {
 
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadQueues();
     }
   }, [profile]);
@@ -50,7 +49,7 @@ export default function StaffQueueIndexPage() {
         <EmptyState
           icon={ClipboardList}
           title="No queues assigned"
-          description="Ask your hospital admin to assign you a queue."
+          description="Ask your business admin to assign you a queue."
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

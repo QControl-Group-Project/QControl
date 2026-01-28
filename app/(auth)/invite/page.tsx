@@ -8,11 +8,14 @@ import { LoadingSpinner } from "@/components/layouts/loadingSpinner";
 
 type InvitationDetails = {
   email: string;
-  role: "doctor" | "staff";
-  hospital_id: string;
+  role: "provider" | "staff";
+  business_id: string;
+  status: "pending" | "accepted" | "expired";
 };
 
-export default function InviteSignupPage() {
+import { Suspense } from "react";
+
+function InviteContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [loading, setLoading] = useState(true);
@@ -63,15 +66,42 @@ export default function InviteSignupPage() {
           <p className="text-sm text-red-600">{error}</p>
         ) : (
           invitation && (
-            <InviteSignupForm
-              token={token as string}
-              email={invitation.email}
-              role={invitation.role}
-            />
+            <>
+              {invitation.status === "accepted" ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-green-700">
+                    This invitation has already been accepted.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Please sign in to continue.
+                  </p>
+                  <a
+                    href={`/login?invite=${encodeURIComponent(token as string)}`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Go to login
+                  </a>
+                </div>
+              ) : (
+                <InviteSignupForm
+                  token={token as string}
+                  email={invitation.email}
+                  role={invitation.role}
+                />
+              )}
+            </>
           )
         )}
       </CardContent>
     </Card>
+  );
+}
+
+export default function InviteSignupPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner text="Loading..." />}>
+      <InviteContent />
+    </Suspense>
   );
 }
 

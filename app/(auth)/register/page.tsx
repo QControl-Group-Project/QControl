@@ -13,7 +13,7 @@ export default function RegisterPage() {
     <Card>
       <CardHeader>
         <CardTitle>Create Account</CardTitle>
-        <CardDescription>Get started with HospitalMS today</CardDescription>
+        <CardDescription>Get started with QControl today</CardDescription>
       </CardHeader>
       <CardContent>
         <RegisterForm />

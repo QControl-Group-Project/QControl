@@ -5,8 +5,8 @@ import { sendEmail } from "@/lib/email/resend";
 
 type InvitePayload = {
   email: string;
-  role: "staff" | "doctor";
-  hospital_id: string;
+  role: "staff" | "provider";
+  business_id: string;
 };
 
 export async function POST(request: Request) {
@@ -21,25 +21,25 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as InvitePayload;
-    const { email, role, hospital_id } = body || {};
+    const { email, role, business_id } = body || {};
 
-    if (!email || !role || !hospital_id) {
+    if (!email || !role || !business_id) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const { data: hospital, error: hospitalError } = await supabase
-      .from("hospitals")
+    const { data: business, error: businessError } = await supabase
+      .from("businesses")
       .select("id, name")
-      .eq("id", hospital_id)
+      .eq("id", business_id)
       .eq("admin_id", user.id)
       .single();
 
-    if (hospitalError || !hospital) {
+    if (businessError || !business) {
       return NextResponse.json(
-        { error: "Hospital not found or access denied" },
+        { error: "Business not found or access denied" },
         { status: 403 }
       );
     }
@@ -47,14 +47,18 @@ export async function POST(request: Request) {
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    const { error: insertError } = await supabase.from("invitations").insert({
-      hospital_id,
+    const { data: createdInvite, error: insertError } = await supabase
+      .from("invitations")
+      .insert({
+      business_id,
       email,
       role,
       token,
       expires_at: expiresAt.toISOString(),
       invited_by: user.id,
-    });
+      })
+      .select("id, token")
+      .single();
 
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
@@ -64,12 +68,12 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.APP_URL ||
       "http://localhost:3000";
-    const inviteUrl = `${baseUrl}/auth/invite?token=${token}`;
-    const subject = `You're invited to join ${hospital.name}`;
+    const inviteUrl = `${baseUrl}/invite?token=${token}`;
+    const subject = `You're invited to join ${business.name}`;
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <p>Hello,</p>
-        <p>You have been invited to join <strong>${hospital.name}</strong> as a ${role}.</p>
+        <p>You have been invited to join <strong>${business.name}</strong> as a ${role}.</p>
         <p>
           <a href="${inviteUrl}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">
             Accept Invitation
@@ -90,7 +94,11 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      token: createdInvite?.token ?? token,
+      invitation_id: createdInvite?.id,
+    });
   } catch (error) {
     console.error("Invitation API Error:", error);
     return NextResponse.json(

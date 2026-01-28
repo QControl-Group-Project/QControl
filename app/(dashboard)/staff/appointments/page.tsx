@@ -18,7 +18,7 @@ export default function StaffAppointmentsPage() {
 
     const { data: assignment } = await supabase
       .from("staff_assignments")
-      .select("hospital_id")
+      .select("business_id")
       .eq("staff_id", profile.id)
       .eq("is_active", true)
       .single();
@@ -31,8 +31,8 @@ export default function StaffAppointmentsPage() {
 
     const { data } = await supabase
       .from("appointments")
-      .select("*, doctors(profiles(full_name)), hospitals(name)")
-      .eq("hospital_id", assignment.hospital_id)
+      .select("*, doctors(profiles(full_name)), businesses(name)")
+      .eq("business_id", assignment.business_id)
       .order("appointment_date", { ascending: true })
       .order("appointment_time", { ascending: true });
 
@@ -76,8 +76,8 @@ export default function StaffAppointmentsPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Appointments"
-        description="Monitor hospital appointments"
+        title="Bookings"
+        description="Monitor business bookings"
       />
 
       <AppointmentList
@@ -85,7 +85,7 @@ export default function StaffAppointmentsPage() {
         onUpdateStatus={updateStatus}
         onCancel={cancelAppointment}
         showActions={!loading}
-        emptyMessage="No appointments yet"
+        emptyMessage="No bookings yet"
       />
     </div>
   );

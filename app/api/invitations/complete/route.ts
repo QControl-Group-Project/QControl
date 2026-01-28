@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const adminClient = createAdminSupabaseClient();
     const { data: invitation, error: inviteError } = await adminClient
       .from("invitations")
-      .select("id, email, role, status, expires_at")
+      .select("id, email, role, status, expires_at, business_id")
       .eq("token", token)
       .single();
 
@@ -49,9 +49,18 @@ export async function POST(request: Request) {
     }
 
     if (user_id) {
+      const { data: business } = await adminClient
+        .from("businesses")
+        .select("business_type")
+        .eq("id", invitation.business_id)
+        .single();
+
       const { error: profileError } = await adminClient
         .from("profiles")
-        .update({ role: invitation.role })
+        .update({
+          role: invitation.role,
+          business_type: business?.business_type ?? null,
+        })
         .eq("id", user_id);
 
       if (profileError) {

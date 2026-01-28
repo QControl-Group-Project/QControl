@@ -1,159 +1,323 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Card } from "@/components/ui/card";
+import { use } from "react";
+import { useRealtimeQueue } from "@/lib/hooks/useRealtimeQueue";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { QueueStats, QueueToken } from "@/lib/types";
+import { PageHeader } from "@/components/layouts/PageHeader";
+import { EmptyState } from "@/components/layouts/EmptyState";
+import { QueueTokenCard } from "@/components/queue/QueueTokenCard";
+import { Switch } from "@/components/ui/switch";
+import { 
+  ClipboardList, 
+  Users, 
+  Clock, 
+  CheckCircle, 
+  Play,
+  Wifi,
+  WifiOff,
+  Volume2,
+  SkipForward
+} from "lucide-react";
 
 export default function StaffQueuePage({
   params,
 }: {
-  params: { queueId: string };
+  params: Promise<{ queueId: string }>;
 }) {
-  const [tokens, setTokens] = useState<QueueToken[]>([]);
-  const [stats, setStats] = useState<QueueStats | null>(null);
-  const supabase = createClient();
+  const { queueId } = use(params);
 
-  const loadTokens = async () => {
-    const { data } = await supabase
-      .from("queue_tokens")
-      .select("*")
-      .eq("queue_id", params.queueId)
-      .gte("created_at", new Date().toISOString().split("T")[0])
-      .order("token_number", { ascending: true });
-    setTokens((data as QueueToken[]) || []);
-  };
+  const {
+    queue,
+    tokens,
+    stats,
+    currentServingToken,
+    nextToken,
+    loading,
+    isConnected,
+    callToken,
+    startServing,
+    completeToken,
+    skipToken,
+    recallToken,
+    toggleQueueStatus,
+  } = useRealtimeQueue(queueId, {
+    onTokenCalled: (token) => {
+      
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(
+          `Token number ${token.token_number}, ${token.patient_name}, please proceed to the counter.`
+        );
+        speechSynthesis.speak(utterance);
+      }
+    },
+  });
 
-  const loadStats = async () => {
-    const { data } = await supabase
-      .rpc("get_queue_stats", { p_queue_id: params.queueId })
-      .single();
-    setStats((data as QueueStats) || null);
-  };
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4" />
+          <div className="grid grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <Card key={i}>
+                <CardContent className="p-4 h-20" />
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadTokens();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadStats();
+  if (!queue) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={ClipboardList}
+          title="Queue not found"
+          description="This queue could not be loaded or you don't have access."
+        />
+      </div>
+    );
+  }
 
-    // Subscribe to real-time changes
-    const channel = supabase
-      .channel("queue_tokens_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "queue_tokens",
-          filter: `queue_id=eq.${params.queueId}`,
-        },
-        () => {
-          loadTokens();
-          loadStats();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [params.queueId]);
-
-  const callToken = async (tokenId: string) => {
-    await supabase
-      .from("queue_tokens")
-      .update({ status: "called", called_at: new Date().toISOString() })
-      .eq("id", tokenId);
-  };
-
-  const startServing = async (tokenId: string) => {
-    await supabase
-      .from("queue_tokens")
-      .update({
-        status: "serving",
-        serving_started_at: new Date().toISOString(),
-      })
-      .eq("id", tokenId);
-  };
-
-  const completeToken = async (tokenId: string) => {
-    await supabase
-      .from("queue_tokens")
-      .update({ status: "served", completed_at: new Date().toISOString() })
-      .eq("id", tokenId);
-  };
+  const waitingTokens = tokens.filter(t => t.status === "waiting");
+  const calledTokens = tokens.filter(t => t.status === "called");
+  const completedTokens = tokens.filter(t => t.status === "served" || t.status === "skipped");
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Queue Management</h1>
+    <div className="p-6 space-y-6">
+      
+      <PageHeader
+        title={queue.name}
+        description={queue.departments?.name ?? "Queue Management"}
+        action={
+          <div className="flex items-center gap-4">
+            
+            {isConnected ? (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <Wifi className="h-3 w-3 mr-1" />
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                <WifiOff className="h-3 w-3 mr-1" />
+                Connecting...
+              </Badge>
+            )}
+            
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {queue.is_active ? "Open" : "Closed"}
+              </span>
+              <Switch
+                checked={queue.is_active}
+                onCheckedChange={(checked) => toggleQueueStatus(checked)}
+              />
+            </div>
+          </div>
+        }
+      />
 
-      {/* Stats */}
+      
       {stats && (
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Waiting</p>
-            <p className="text-2xl font-bold">{stats.waiting}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.waiting}</p>
+                  <p className="text-sm text-muted-foreground">Waiting</p>
+                </div>
+              </div>
+            </CardContent>
           </Card>
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Serving</p>
-            <p className="text-2xl font-bold">{stats.serving}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Play className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.serving}</p>
+                  <p className="text-sm text-muted-foreground">Serving</p>
+                </div>
+              </div>
+            </CardContent>
           </Card>
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Served</p>
-            <p className="text-2xl font-bold">{stats.served}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.served}</p>
+                  <p className="text-sm text-muted-foreground">Served</p>
+                </div>
+              </div>
+            </CardContent>
           </Card>
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Total Today</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <Users className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                </div>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Token List */}
-      <div className="space-y-3">
-        {tokens
-          .filter((t) => t.status !== "served" && t.status !== "cancelled")
-          .map((token) => (
-            <Card key={token.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">#{token.token_number}</p>
-                  <p className="text-sm">{token.patient_name}</p>
-                  <p className="text-xs text-gray-500">{token.patient_phone}</p>
+      
+      {currentServingToken && (
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Play className="h-5 w-5 text-purple-600" />
+              Currently Serving
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl font-bold text-purple-600">
+                  #{currentServingToken.token_number}
                 </div>
-                <div className="flex gap-2 items-center">
-                  <Badge
-                    variant={
-                      token.status === "waiting"
-                        ? "secondary"
-                        : token.status === "called"
-                        ? "default"
-                        : "destructive"
-                    }
-                  >
-                    {token.status}
-                  </Badge>
-                  {token.status === "waiting" && (
-                    <Button onClick={() => callToken(token.id)}>Call</Button>
-                  )}
-                  {token.status === "called" && (
-                    <Button onClick={() => startServing(token.id)}>
-                      Start
-                    </Button>
-                  )}
-                  {token.status === "serving" && (
-                    <Button onClick={() => completeToken(token.id)}>
-                      Complete
-                    </Button>
-                  )}
+                <div>
+                  <p className="font-medium text-lg">{currentServingToken.patient_name}</p>
+                  <p className="text-sm text-muted-foreground">{currentServingToken.patient_phone}</p>
                 </div>
               </div>
-            </Card>
-          ))}
-      </div>
+              <Button 
+                onClick={() => completeToken(currentServingToken.id)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Complete
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      
+      {calledTokens.length > 0 && (
+        <Card className="border-blue-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Volume2 className="h-5 w-5 text-blue-600" />
+              Called ({calledTokens.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {calledTokens.map(token => (
+              <div key={token.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-bold text-blue-600">#{token.token_number}</div>
+                  <div>
+                    <p className="font-medium">{token.patient_name}</p>
+                    <p className="text-sm text-muted-foreground">{token.patient_phone}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => startServing(token.id)} size="sm">
+                    <Play className="h-4 w-4 mr-1" />
+                    Start
+                  </Button>
+                  <Button onClick={() => recallToken(token.id)} variant="outline" size="sm">
+                    <Volume2 className="h-4 w-4 mr-1" />
+                    Recall
+                  </Button>
+                  <Button onClick={() => skipToken(token.id)} variant="outline" size="sm">
+                    <SkipForward className="h-4 w-4 mr-1" />
+                    Skip
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Waiting Queue ({waitingTokens.length})
+            </CardTitle>
+            {nextToken && !currentServingToken && !calledTokens.length && (
+              <Button onClick={() => callToken(nextToken.id)}>
+                <Volume2 className="h-4 w-4 mr-2" />
+                Call Next
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {waitingTokens.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No one waiting"
+              description="The queue is empty."
+            />
+          ) : (
+            <div className="space-y-3">
+              {waitingTokens.map((token) => (
+                <QueueTokenCard
+                  key={token.id}
+                  token={token}
+                  onCall={callToken}
+                  onSkip={skipToken}
+                  showActions
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+          
+      {completedTokens.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Completed ({completedTokens.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              {completedTokens.slice(0, 12).map((token) => (
+                <div 
+                  key={token.id} 
+                  className={`p-2 rounded-lg text-center text-sm ${
+                    token.status === "served" 
+                      ? "bg-green-50 text-green-700" 
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  <p className="font-bold">#{token.token_number}</p>
+                  <p className="text-xs truncate">{token.patient_name}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

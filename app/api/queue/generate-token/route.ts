@@ -1,30 +1,28 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminSupabaseClient();
     const body = await request.json();
 
     const {
       queue_id,
-      hospital_id,
+      business_id,
       patient_name,
       patient_phone,
       patient_age,
       purpose,
-      patient_id, // Optional - will be null for unauthenticated users
+      patient_id, 
     } = body;
 
-    // Validate required fields
-    if (!queue_id || !hospital_id || !patient_name) {
+    if (!queue_id || !business_id || !patient_name) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Check if queue is active and has capacity
     const { data: queue } = await supabase
       .from("queues")
       .select("*")
@@ -38,7 +36,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get token count for today
     const today = new Date().toISOString().split("T")[0];
     const { count } = await supabase
       .from("queue_tokens")
@@ -53,7 +50,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get next token number
     const { data: tokenNumber, error: rpcError } = await supabase.rpc(
       "get_next_queue_token_number",
       { p_queue_id: queue_id }
@@ -67,12 +63,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create token
     const { data: token, error: insertError } = await supabase
       .from("queue_tokens")
       .insert({
         queue_id,
-        hospital_id,
+        business_id,
         token_number: tokenNumber,
         patient_id,
         patient_name,
@@ -81,7 +76,7 @@ export async function POST(request: Request) {
         purpose,
         status: "waiting",
       })
-      .select("*, queues(name, estimated_wait_time), hospitals(name)")
+      .select("*, queues(name, estimated_wait_time), businesses(name)")
       .single();
 
     if (insertError) {
