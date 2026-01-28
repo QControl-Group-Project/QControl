@@ -6,7 +6,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Date formatting utilities
 export function formatDate(
   date: string | Date,
   formatStr: string = "PPP"
@@ -18,7 +17,7 @@ export function formatDate(
 
 export function formatTime(time: string): string {
   if (!time) return "";
-  return time.substring(0, 5); // HH:MM
+  return time.substring(0, 5); 
 }
 
 export function formatDateTime(dateTime: string | Date): string {
@@ -33,7 +32,6 @@ export function timeAgo(date: string | Date): string {
   return formatDistanceToNow(dateObj, { addSuffix: true });
 }
 
-// Phone number formatting
 export function formatPhoneNumber(phone: string): string {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");
@@ -44,7 +42,6 @@ export function formatPhoneNumber(phone: string): string {
   return phone;
 }
 
-// Currency formatting
 export function formatCurrency(
   amount: number,
   currency: string = "USD"
@@ -55,7 +52,6 @@ export function formatCurrency(
   }).format(amount);
 }
 
-// Token status badge colors
 export function getTokenStatusColor(status: string): string {
   const colors: Record<string, string> = {
     waiting: "bg-yellow-100 text-yellow-800",
@@ -68,7 +64,6 @@ export function getTokenStatusColor(status: string): string {
   return colors[status] || "bg-gray-100 text-gray-800";
 }
 
-// Appointment status badge colors
 export function getAppointmentStatusColor(status: string): string {
   const colors: Record<string, string> = {
     scheduled: "bg-blue-100 text-blue-800",
@@ -82,7 +77,6 @@ export function getAppointmentStatusColor(status: string): string {
   return colors[status] || "bg-gray-100 text-gray-800";
 }
 
-// Generate initials from name
 export function getInitials(name: string): string {
   if (!name) return "??";
   return name
@@ -93,7 +87,6 @@ export function getInitials(name: string): string {
     .substring(0, 2);
 }
 
-// Calculate age from date of birth
 export function calculateAge(dateOfBirth: string): number {
   if (!dateOfBirth) return 0;
   const today = new Date();
@@ -109,7 +102,6 @@ export function calculateAge(dateOfBirth: string): number {
   return age;
 }
 
-// Debounce function
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
@@ -121,24 +113,20 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   };
 }
 
-// Generate random ID
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
 
-// Validate email
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-// Validate phone number
 export function isValidPhone(phone: string): boolean {
   const phoneRegex = /^\+?[\d\s\-()]+$/;
   return phoneRegex.test(phone) && phone.replace(/\D/g, "").length >= 10;
 }
 
-// Download data as JSON
 export function downloadJSON(data: unknown, filename: string): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
@@ -151,7 +139,6 @@ export function downloadJSON(data: unknown, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-// Copy to clipboard
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
@@ -162,7 +149,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-// Sleep utility
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

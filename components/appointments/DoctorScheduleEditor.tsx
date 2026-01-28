@@ -44,8 +44,16 @@ export function DoctorScheduleEditor({
     },
   });
 
+  const normalizeTime = (value: string) =>
+    value.length === 5 ? `${value}:00` : value;
+
   const onSubmit = async (data: ScheduleFormValues) => {
-    const { error } = await supabase.from("doctor_schedules").insert(data);
+    const payload = {
+      ...data,
+      start_time: normalizeTime(data.start_time),
+      end_time: normalizeTime(data.end_time),
+    };
+    const { error } = await supabase.from("doctor_schedules").insert(payload);
 
     if (error) {
       toast.error("Failed to add schedule");
@@ -53,7 +61,6 @@ export function DoctorScheduleEditor({
       toast.success("Schedule added successfully");
       setIsAdding(false);
       reset();
-      // Reload schedules
       loadSchedules();
     }
   };
@@ -93,7 +100,6 @@ export function DoctorScheduleEditor({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Add Schedule Form */}
         {isAdding && (
           <form
             onSubmit={handleSubmit(onSubmit)}
@@ -134,7 +140,7 @@ export function DoctorScheduleEditor({
                 />
               </div>
               <div>
-                <Label>Max Patients per Slot</Label>
+                <Label>Max Customers per Slot</Label>
                 <Input
                   type="number"
                   {...register("max_patients_per_slot", {
@@ -161,7 +167,6 @@ export function DoctorScheduleEditor({
           </form>
         )}
 
-        {/* Existing Schedules */}
         <div className="space-y-2">
           {schedules.map((schedule) => (
             <div

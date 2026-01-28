@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/layouts/loadingSpinner";
 import { getTokenStatusColor, timeAgo } from "@/lib/utils";
-import { Hospital, Queue, QueueToken } from "@/lib/types";
+import { Business, Queue, QueueToken } from "@/lib/types";
 import { Clock, MapPin, Phone, RefreshCw, Timer, User } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 type TokenTracking = {
-  token: QueueToken & { queues?: Queue; hospitals?: Hospital };
+  token: QueueToken & { queues?: Queue; businesses?: Business };
   position: number;
   estimatedWait: number;
 };
@@ -99,7 +99,6 @@ export function TokenTrackingCard({ tokenId }: TokenTrackingCardProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-3">
             <span className="text-4xl font-bold text-blue-600">
-              #{token.token_number}
             </span>
             <Badge className={getTokenStatusColor(token.status)}>
               {token.status}
@@ -150,9 +149,9 @@ export function TokenTrackingCard({ tokenId }: TokenTrackingCardProps) {
                 <MapPin className="h-4 w-4" />
                 <div>
                   <p className="font-medium">{token.queues.name}</p>
-                  {token.hospitals?.name && (
+                  {token.businesses?.name && (
                     <p className="text-sm text-gray-500">
-                      {token.hospitals.name}
+                      {token.businesses.name}
                     </p>
                   )}
                 </div>

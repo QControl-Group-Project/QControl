@@ -11,6 +11,8 @@ interface AppointmentListProps {
   onCancel?: (id: string) => void;
   showActions?: boolean;
   emptyMessage?: string;
+  layout?: "list" | "grid";
+  cardVariant?: "default" | "customer";
 }
 
 export function AppointmentList({
@@ -18,20 +20,28 @@ export function AppointmentList({
   onUpdateStatus,
   onCancel,
   showActions,
-  emptyMessage = "No appointments found",
+  emptyMessage = "No bookings found",
+  layout = "list",
+  cardVariant = "default",
 }: AppointmentListProps) {
   if (appointments.length === 0) {
     return (
       <EmptyState
         icon={Calendar}
         title={emptyMessage}
-        description="There are no appointments to display at the moment."
+        description="There are no bookings to display at the moment."
       />
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div
+      className={
+        layout === "grid"
+          ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+          : "space-y-4"
+      }
+    >
       {appointments.map((appointment) => (
         <AppointmentCard
           key={appointment.id}
@@ -39,6 +49,7 @@ export function AppointmentList({
           onUpdateStatus={onUpdateStatus}
           onCancel={onCancel}
           showActions={showActions}
+          variant={cardVariant}
         />
       ))}
     </div>

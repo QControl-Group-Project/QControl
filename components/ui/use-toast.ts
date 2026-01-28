@@ -9,10 +9,6 @@ type ToastInput = {
   variant?: ToastVariant;
 };
 
-/**
- * Lightweight wrapper around `sonner` so hooks can call `toast({ ... })`
- * similar to the shadcn API.
- */
 export function useToast() {
   const toast = ({ title, description, duration, variant }: ToastInput) =>
     sonnerToast(title ?? description ?? "Notification", {

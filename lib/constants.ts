@@ -1,24 +1,30 @@
-export const APP_NAME = "HospitalMS";
+export const APP_NAME = "QControl";
 export const APP_DESCRIPTION =
-  "Hospital Queue and Appointment Management System";
+  "Business Queue and Appointment Management System";
 
 export const ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   REGISTER: "/register",
-  ADMIN: "/admin",
-  DOCTOR: "/doctor",
+  OWNER: "/owner",
+  PROVIDER: "/provider",
   STAFF: "/staff",
-  PATIENT: "/patient",
+  CUSTOMER: "/customer",
   QUEUE: "/queue",
   APPOINTMENTS: "/appointments",
 } as const;
 
+export const BUSINESS_TYPE_OPTIONS = [
+  "business",
+  "barber",
+  "custom",
+] as const;
+
 export const ROLES = {
-  ADMIN: "admin",
-  DOCTOR: "doctor",
+  OWNER: "owner",
+  PROVIDER: "provider",
   STAFF: "staff",
-  PATIENT: "patient",
+  CUSTOMER: "customer",
 } as const;
 
 export const APPOINTMENT_STATUSES = {
@@ -67,6 +73,6 @@ export const QUERY_KEYS = {
   QUEUES: "queues",
   TOKENS: "tokens",
   DOCTORS: "doctors",
-  HOSPITALS: "hospitals",
+  HOSPITALS: "businesses",
   PROFILE: "profile",
 } as const;

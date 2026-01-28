@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type UserRole = "admin" | "doctor" | "staff" | "patient";
+export type UserRole = "owner" | "provider" | "staff" | "customer";
 
 export interface Profile {
   id: string;
@@ -15,6 +15,8 @@ export interface Profile {
   role: UserRole;
   phone?: string;
   avatar_url?: string;
+  business_type?: string;
+  business_type_custom?: string;
   date_of_birth?: string;
   address?: string;
   gender?: "male" | "female" | "other";
@@ -22,11 +24,13 @@ export interface Profile {
   updated_at: string;
 }
 
-export interface Hospital {
+export interface Business {
   id: string;
   admin_id: string;
   name: string;
   description?: string;
+  business_type?: string;
+  business_type_custom?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -44,7 +48,7 @@ export interface Hospital {
 
 export interface Department {
   id: string;
-  hospital_id: string;
+  business_id: string;
   name: string;
   description?: string;
   floor_number?: number;
@@ -65,7 +69,7 @@ export interface Specialization {
 export interface Doctor {
   id: string;
   profile_id: string;
-  hospital_id: string;
+  business_id: string;
   department_id?: string;
   specialization_id?: string;
   license_number?: string;
@@ -78,7 +82,7 @@ export interface Doctor {
   updated_at: string;
   profiles?: Profile;
   specializations?: Specialization;
-  hospitals?: Hospital;
+  businesses?: Business;
   departments?: Department;
 }
 
@@ -106,13 +110,17 @@ export interface DoctorLeave {
 }
 
 export type AppointmentStatus =
+  | "pending"
   | "scheduled"
   | "confirmed"
   | "waiting"
   | "in-progress"
   | "completed"
   | "cancelled"
+  | "rejected"
   | "no-show";
+
+export type ApprovalStatus = "pending" | "approved" | "rejected";
 
 export type AppointmentType =
   | "consultation"
@@ -122,7 +130,7 @@ export type AppointmentType =
 
 export interface Appointment {
   id: string;
-  hospital_id: string;
+  business_id: string;
   doctor_id: string;
   patient_id?: string | null;
   appointment_number: number;
@@ -134,35 +142,42 @@ export interface Appointment {
   appointment_date: string;
   appointment_time: string;
   status: AppointmentStatus;
+  approval_status: ApprovalStatus;
   appointment_type: AppointmentType;
   symptoms?: string;
   notes?: string;
   prescription?: string;
   diagnosis?: string;
+  cancellation_reason?: string;
+  rejection_reason?: string;
   created_at: string;
   confirmed_at?: string;
+  approved_at?: string;
+  rejected_at?: string;
   started_at?: string;
   completed_at?: string;
   cancelled_at?: string;
   doctors?: Doctor;
-  hospitals?: Hospital;
+  businesses?: Business;
 }
 
 export interface Queue {
   id: string;
-  hospital_id: string;
+  business_id: string;
   department_id?: string;
   name: string;
   description?: string;
+  image_url?: string;
   max_tokens_per_day: number;
   estimated_wait_time: number;
   opening_time?: string;
   closing_time?: string;
   is_active: boolean;
+  is_public?: boolean;
   qr_code_url?: string;
   current_token_number: number;
   created_at: string;
-  hospitals?: Hospital;
+  businesses?: Business;
   departments?: Department;
 }
 
@@ -177,7 +192,7 @@ export type QueueTokenStatus =
 export interface QueueToken {
   id: string;
   queue_id: string;
-  hospital_id: string;
+  business_id: string;
   token_number: number;
   patient_id?: string | null;
   patient_name: string;
@@ -191,26 +206,26 @@ export interface QueueToken {
   serving_started_at?: string;
   completed_at?: string;
   queues?: Queue;
-  hospitals?: Hospital;
+  businesses?: Business;
 }
 
 export interface StaffAssignment {
   id: string;
   staff_id: string;
-  hospital_id: string;
+  business_id: string;
   department_id?: string;
   assigned_by?: string;
   role: string;
   is_active: boolean;
   created_at: string;
-  hospitals?: Hospital;
+  businesses?: Business;
 }
 
 export interface QueueStaffAssignment {
   id: string;
   staff_id: string;
   queue_id: string;
-  hospital_id: string;
+  business_id: string;
   assigned_by?: string;
   is_active: boolean;
   created_at: string;
@@ -221,7 +236,7 @@ export type InvitationStatus = "pending" | "accepted" | "expired";
 
 export interface Invitation {
   id: string;
-  hospital_id: string;
+  business_id: string;
   email: string;
   role: UserRole;
   invited_by?: string;

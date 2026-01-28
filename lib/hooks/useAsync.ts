@@ -29,7 +29,6 @@ export function useAsync<T>(
 
   useEffect(() => {
     if (immediate) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       execute();
     }
   }, [execute, immediate]);

@@ -20,10 +20,51 @@ export function getSupabaseClient() {
   }
 
   supabaseClient = createBrowserClient(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        if (typeof window === 'undefined') {
+          return undefined;
+        }
+        const value = document.cookie
+          .split('; ')
+          .find(row => row.startsWith(`${name}=`))
+          ?.split('=')[1];
+        return value ? decodeURIComponent(value) : undefined;
+      },
+      set(name: string, value: string, options: any) {
+        if (typeof window === 'undefined') {
+          return;
+        }
+
+        const maxAge = options?.maxAge ?? 2592000; 
+
+        let cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge};`;
+
+        if (options?.sameSite) {
+          cookie += ` samesite=${options.sameSite};`;
+        } else {
+          cookie += ' samesite=lax;';
+        }
+
+        if (options?.secure || process.env.NODE_ENV === 'production') {
+          cookie += ' secure;';
+        }
+
+        document.cookie = cookie;
+      },
+      remove(name: string) {
+        if (typeof window === 'undefined') {
+          return;
+        }
+        document.cookie = `${name}=; path=/; max-age=0;`;
+      },
+    },
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      flowType: 'pkce',
+      debug: process.env.NODE_ENV === 'development',
     },
   });
 
