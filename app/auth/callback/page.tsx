@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = getSupabaseClient();
@@ -49,7 +49,7 @@ export default function AuthCallbackPage() {
       }
 
       const inviteToken = searchParams.get("invite");
-      let role = "patient";
+      let role = "customer";
 
       if (inviteToken) {
         try {
@@ -89,6 +89,20 @@ export default function AuthCallbackPage() {
     <div className="flex h-screen items-center justify-center">
       <div className="text-center">Signing you in...</div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">Loading...</div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
 

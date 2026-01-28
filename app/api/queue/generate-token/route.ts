@@ -8,15 +8,15 @@ export async function POST(request: Request) {
 
     const {
       queue_id,
-      hospital_id,
+      business_id,
       patient_name,
       patient_phone,
       patient_age,
       purpose,
-      patient_id, // Optional - will be null for unauthenticated users
+      patient_id, 
     } = body;
 
-    if (!queue_id || !hospital_id || !patient_name) {
+    if (!queue_id || !business_id || !patient_name) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       .from("queue_tokens")
       .insert({
         queue_id,
-        hospital_id,
+        business_id,
         token_number: tokenNumber,
         patient_id,
         patient_name,
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         purpose,
         status: "waiting",
       })
-      .select("*, queues(name, estimated_wait_time), hospitals(name)")
+      .select("*, queues(name, estimated_wait_time), businesses(name)")
       .single();
 
     if (insertError) {

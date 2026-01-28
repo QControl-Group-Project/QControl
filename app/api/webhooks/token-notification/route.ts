@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     const { data: token } = await supabase
       .from("queue_tokens")
-      .select("*, queues(name), hospitals(name)")
+      .select("*, queues(name), businesses(name)")
       .eq("id", record.id)
       .single();
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
             <p>Hello,</p>
             <p>Your queue token <strong>#${token.token_number}</strong> has been called.</p>
             <p>Queue: ${token.queues?.name ?? "Queue"}</p>
-            <p>Hospital: ${token.hospitals?.name ?? "Hospital"}</p>
+            <p>Business: ${token.businesses?.name ?? "Business"}</p>
             <p>Please proceed to the queue desk.</p>
           </div>
         `;

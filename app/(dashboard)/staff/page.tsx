@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useStaffData } from "@/lib/hooks/use-staff-data";
+import { useStaffNotifications } from "@/lib/hooks/useRoleNotifications";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -15,123 +14,46 @@ import {
   Calendar,
   ArrowRight,
 } from "lucide-react";
-import { LoadingSpinner } from "@/components/layouts/loadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Appointment, Queue, QueueToken, StaffAssignment } from "@/lib/types";
+
 export default function StaffDashboard() {
   const { profile } = useAuth();
-  const [assignment, setAssignment] = useState<StaffAssignment | null>(null);
-  const [queues, setQueues] = useState<Queue[]>([]);
-  const [stats, setStats] = useState({
+  const { data, isLoading } = useStaffData();
+
+  const assignments = data?.assignment;
+  const queues = data?.queues || [];
+  
+  
+  useStaffNotifications(assignments?.business_id);
+  const stats = data?.stats || {
     activeTokens: 0,
     servedToday: 0,
     waitingTokens: 0,
     averageWaitTime: 0,
-  });
-  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
-
-  const loadStaffData = async () => {
-    if (!profile) return;
-
-    try {
-      const { data: staffAssignment } = await supabase
-        .from("staff_assignments")
-        .select("*, hospitals(name, address)")
-        .eq("staff_id", profile.id)
-        .eq("is_active", true)
-        .single();
-
-      if (staffAssignment) {
-        setAssignment(staffAssignment as StaffAssignment);
-
-        const { data: queueAssignments } = await supabase
-          .from("queue_staff_assignments")
-          .select("*, queues(*)")
-          .eq("staff_id", profile.id)
-          .eq("is_active", true);
-
-        const queuesData =
-          (queueAssignments as { queues: Queue }[] | null)?.map(
-            (qa) => qa.queues
-          ) || [];
-        setQueues(queuesData);
-
-        const today = new Date().toISOString().split("T")[0];
-        const queueIds = queuesData.map((q) => q.id);
-
-        if (queueIds.length > 0) {
-          const { data: tokens } = await supabase
-            .from("queue_tokens")
-            .select("*")
-            .in("queue_id", queueIds)
-            .gte("created_at", today);
-
-          const typedTokens = (tokens as QueueToken[]) || [];
-          const activeTokens = typedTokens.filter((t) =>
-            ["waiting", "called", "serving"].includes(t.status)
-          ).length;
-
-          const servedTokens = typedTokens.filter(
-            (t) => t.status === "served"
-          ).length;
-          const waitingTokens = typedTokens.filter(
-            (t) => t.status === "waiting"
-          ).length;
-
-          const servedWithTimes = typedTokens.filter(
-            (
-              t
-            ): t is QueueToken & { completed_at: string; created_at: string } =>
-              t.status === "served" && !!t.completed_at && !!t.created_at
-          );
-
-          const avgWait =
-            servedWithTimes.length > 0
-              ? servedWithTimes.reduce((acc, t) => {
-                  const wait =
-                    (new Date(t.completed_at).getTime() -
-                      new Date(t.created_at).getTime()) /
-                    60000;
-                  return acc + wait;
-                }, 0) / servedWithTimes.length
-              : 0;
-
-          setStats({
-            activeTokens,
-            servedToday: servedTokens,
-            waitingTokens,
-            averageWaitTime: Math.round(avgWait),
-          });
-        }
-
-        const { data: appointments } = await supabase
-          .from("appointments")
-          .select("*, doctors(profiles(full_name))")
-          .eq("hospital_id", staffAssignment.hospital_id)
-          .eq("appointment_date", today)
-          .in("status", ["scheduled", "confirmed", "waiting"])
-          .order("appointment_time", { ascending: true })
-          .limit(5);
-
-        setTodayAppointments((appointments as Appointment[]) || []);
-      }
-    } catch (error) {
-      console.error("Error loading staff data:", error);
-    } finally {
-      setLoading(false);
-    }
   };
+  const todayAppointments = data?.todayAppointments || [];
 
-  useEffect(() => {
-    if (profile) {
-      loadStaffData();
-    }
-  }, [profile]);
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
 
-  if (loading) return <LoadingSpinner text="Loading dashboard..." />;
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
+        </div>
 
-  if (!assignment) {
+        <Skeleton className="h-48 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </div>
+    )
+  }
+
+  if (!assignments) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="max-w-md">
@@ -139,7 +61,7 @@ export default function StaffDashboard() {
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
             <h3 className="text-xl font-semibold mb-2">No Assignment Found</h3>
             <p className="text-gray-500">
-              You haven&apos;t been assigned to any hospital yet. Please contact
+              You haven&apos;t been assigned to any business yet. Please contact
               your administrator.
             </p>
           </CardContent>
@@ -150,20 +72,20 @@ export default function StaffDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      
       <div>
         <h1 className="text-3xl font-bold">Staff Dashboard</h1>
         <p className="text-gray-500">
-          {assignment.hospitals?.name ?? "Hospital"}
+          {assignments.businesses?.name ?? "Business"}
         </p>
-        {assignment.hospitals?.address && (
+        {assignments.businesses?.address && (
           <p className="text-sm text-gray-400">
-            {assignment.hospitals.address}
+            {assignments.businesses.address}
           </p>
         )}
       </div>
 
-      {/* Stats Grid */}
+      
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -212,7 +134,7 @@ export default function StaffDashboard() {
         </Card>
       </div>
 
-      {/* My Assigned Queues */}
+      
       <Card>
         <CardHeader>
           <CardTitle>My Assigned Queues</CardTitle>
@@ -267,7 +189,7 @@ export default function StaffDashboard() {
         </CardContent>
       </Card>
 
-      {/* Today's Appointments */}
+      
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Today&apos;s Appointments</CardTitle>
@@ -317,7 +239,7 @@ export default function StaffDashboard() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
+      
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>

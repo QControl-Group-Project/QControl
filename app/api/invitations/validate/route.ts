@@ -4,7 +4,8 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get("token");
+    const rawToken = searchParams.get("token");
+    const token = rawToken?.trim();
 
     if (!token) {
       return NextResponse.json({ error: "Missing token" }, { status: 400 });
@@ -13,19 +14,23 @@ export async function GET(request: Request) {
     const adminClient = createAdminSupabaseClient();
     const { data: invitation, error } = await adminClient
       .from("invitations")
-      .select("id, email, role, status, expires_at, hospital_id")
+      .select("id, email, role, status, expires_at, business_id")
       .eq("token", token)
       .single();
 
-    if (error || !invitation) {
-      return NextResponse.json({ error: "Invalid invitation" }, { status: 404 });
+    if (error) {
+      if (error.code === "PGRST116") {
+        return NextResponse.json({ error: "Invalid invitation" }, { status: 404 });
+      }
+      console.error("Invitation validate error:", error);
+      return NextResponse.json(
+        { error: "Failed to validate invitation" },
+        { status: 500 }
+      );
     }
 
-    if (invitation.status !== "pending") {
-      return NextResponse.json(
-        { error: "Invitation is not active" },
-        { status: 400 }
-      );
+    if (!invitation) {
+      return NextResponse.json({ error: "Invalid invitation" }, { status: 404 });
     }
 
     if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
@@ -37,7 +42,8 @@ export async function GET(request: Request) {
       invitation: {
         email: invitation.email,
         role: invitation.role,
-        hospital_id: invitation.hospital_id,
+        business_id: invitation.business_id,
+        status: invitation.status,
       },
     });
   } catch (error) {

@@ -4,11 +4,11 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const hospitalId = searchParams.get("hospitalId");
+    const businessId = searchParams.get("businessId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    if (!hospitalId || !startDate || !endDate) {
+    if (!businessId || !startDate || !endDate) {
       return NextResponse.json(
         { error: "Missing required parameters" },
         { status: 400 }
@@ -17,37 +17,52 @@ export async function GET(request: Request) {
 
     const supabase = await createServerSupabaseClient();
 
-    // Get appointment stats
     const { data: appointmentStats } = await supabase
       .rpc("get_appointment_stats", {
-        p_hospital_id: hospitalId,
+        p_business_id: businessId,
         p_start_date: startDate,
         p_end_date: endDate,
       })
       .single();
 
-    // Get daily token counts
-    const { data: dailyTokens } = await supabase
-      .from("queue_tokens")
-      .select("created_at")
-      .eq("hospital_id", hospitalId)
-      .gte("created_at", startDate)
-      .lte("created_at", endDate);
+    const [dailyTokens, dailyAppointments] = await Promise.all([
+      supabase
+        .from("queue_tokens")
+        .select("created_at")
+        .eq("business_id", businessId)
+        .gte("created_at", startDate)
+        .lte("created_at", endDate),
+      supabase
+        .from("appointments")
+        .select("appointment_date")
+        .eq("business_id", businessId)
+        .gte("appointment_date", startDate)
+        .lte("appointment_date", endDate)
+    ]);
 
-    // Group by date
-    const tokensByDate = dailyTokens?.reduce<Record<string, number>>(
+    const tokensByDate = dailyTokens?.data?.reduce<Record<string, number>>(
       (acc, token) => {
         const date = token.created_at.split("T")[0];
         acc[date] = (acc[date] || 0) + 1;
         return acc;
       },
       {}
-    );
+    ) || {};
+
+    const appointmentsByDate = dailyAppointments?.data?.reduce<Record<string, number>>(
+      (acc, appointment) => {
+        const date = appointment.appointment_date;
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+      },
+      {}
+    ) || {};
 
     return NextResponse.json({
       success: true,
       analytics: {
         appointments: appointmentStats,
+        appointmentsByDate,
         tokens: tokensByDate,
       },
     });

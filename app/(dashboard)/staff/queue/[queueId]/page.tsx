@@ -1,370 +1,323 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { use } from "react";
+import { useRealtimeQueue } from "@/lib/hooks/useRealtimeQueue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import {
-  Clock,
-  Users,
-  CheckCircle,
-  AlertCircle,
-  Calendar,
-  ArrowRight,
+import { PageHeader } from "@/components/layouts/PageHeader";
+import { EmptyState } from "@/components/layouts/EmptyState";
+import { QueueTokenCard } from "@/components/queue/QueueTokenCard";
+import { Switch } from "@/components/ui/switch";
+import { 
+  ClipboardList, 
+  Users, 
+  Clock, 
+  CheckCircle, 
+  Play,
+  Wifi,
+  WifiOff,
+  Volume2,
+  SkipForward
 } from "lucide-react";
-import { LoadingSpinner } from "@/components/layouts/loadingSpinner";
-import { Appointment, Queue, QueueToken, StaffAssignment } from "@/lib/types";
-export default function StaffDashboard() {
-  const { profile } = useAuth();
-  const [assignment, setAssignment] = useState<StaffAssignment | null>(null);
-  const [queues, setQueues] = useState<Queue[]>([]);
-  const [stats, setStats] = useState({
-    activeTokens: 0,
-    servedToday: 0,
-    waitingTokens: 0,
-    averageWaitTime: 0,
-  });
-  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
-  const loadStaffData = async () => {
-    if (!profile) return;
+export default function StaffQueuePage({
+  params,
+}: {
+  params: Promise<{ queueId: string }>;
+}) {
+  const { queueId } = use(params);
 
-    try {
-      const { data: staffAssignment } = await supabase
-        .from("staff_assignments")
-        .select("*, hospitals(name, address)")
-        .eq("staff_id", profile.id)
-        .eq("is_active", true)
-        .single();
-
-      if (staffAssignment) {
-        setAssignment(staffAssignment as StaffAssignment);
-
-        const { data: queueAssignments } = await supabase
-          .from("queue_staff_assignments")
-          .select("*, queues(*)")
-          .eq("staff_id", profile.id)
-          .eq("is_active", true);
-
-        const queuesData =
-          (queueAssignments as { queues: Queue }[] | null)?.map(
-            (qa) => qa.queues
-          ) || [];
-        setQueues(queuesData);
-
-        const today = new Date().toISOString().split("T")[0];
-        const queueIds = queuesData.map((q) => q.id);
-
-        if (queueIds.length > 0) {
-          const { data: tokens } = await supabase
-            .from("queue_tokens")
-            .select("*")
-            .in("queue_id", queueIds)
-            .gte("created_at", today);
-
-          const typedTokens = (tokens as QueueToken[]) || [];
-          const activeTokens = typedTokens.filter((t) =>
-            ["waiting", "called", "serving"].includes(t.status)
-          ).length;
-
-          const servedTokens = typedTokens.filter(
-            (t) => t.status === "served"
-          ).length;
-          const waitingTokens = typedTokens.filter(
-            (t) => t.status === "waiting"
-          ).length;
-
-          const servedWithTimes = typedTokens.filter(
-            (
-              t
-            ): t is QueueToken & { completed_at: string; created_at: string } =>
-              t.status === "served" && !!t.completed_at && !!t.created_at
-          );
-
-          const avgWait =
-            servedWithTimes.length > 0
-              ? servedWithTimes.reduce((acc, t) => {
-                  const wait =
-                    (new Date(t.completed_at).getTime() -
-                      new Date(t.created_at).getTime()) /
-                    60000;
-                  return acc + wait;
-                }, 0) / servedWithTimes.length
-              : 0;
-
-          setStats({
-            activeTokens,
-            servedToday: servedTokens,
-            waitingTokens,
-            averageWaitTime: Math.round(avgWait),
-          });
-        }
-
-        const { data: appointments } = await supabase
-          .from("appointments")
-          .select("*, doctors(profiles(full_name))")
-          .eq("hospital_id", staffAssignment.hospital_id)
-          .eq("appointment_date", today)
-          .in("status", ["scheduled", "confirmed", "waiting"])
-          .order("appointment_time", { ascending: true })
-          .limit(5);
-
-        setTodayAppointments((appointments as Appointment[]) || []);
+  const {
+    queue,
+    tokens,
+    stats,
+    currentServingToken,
+    nextToken,
+    loading,
+    isConnected,
+    callToken,
+    startServing,
+    completeToken,
+    skipToken,
+    recallToken,
+    toggleQueueStatus,
+  } = useRealtimeQueue(queueId, {
+    onTokenCalled: (token) => {
+      
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(
+          `Token number ${token.token_number}, ${token.patient_name}, please proceed to the counter.`
+        );
+        speechSynthesis.speak(utterance);
       }
-    } catch (error) {
-      console.error("Error loading staff data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  useEffect(() => {
-    if (profile) {
-      loadStaffData();
-    }
-  }, [profile]);
-
-  if (loading) return <LoadingSpinner text="Loading dashboard..." />;
-
-  if (!assignment) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="max-w-md">
-          <CardContent className="p-12 text-center">
-            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Assignment Found</h3>
-            <p className="text-gray-500">
-              You haven&apos;t been assigned to any hospital yet. Please contact
-              your administrator.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4" />
+          <div className="grid grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <Card key={i}>
+                <CardContent className="p-4 h-20" />
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
+  if (!queue) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={ClipboardList}
+          title="Queue not found"
+          description="This queue could not be loaded or you don't have access."
+        />
+      </div>
+    );
+  }
+
+  const waitingTokens = tokens.filter(t => t.status === "waiting");
+  const calledTokens = tokens.filter(t => t.status === "called");
+  const completedTokens = tokens.filter(t => t.status === "served" || t.status === "skipped");
+
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Staff Dashboard</h1>
-        <p className="text-gray-500">
-          {assignment.hospitals?.name ?? "Hospital"}
-        </p>
-        {assignment.hospitals?.address && (
-          <p className="text-sm text-gray-400">
-            {assignment.hospitals.address}
-          </p>
-        )}
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Tokens</CardTitle>
-            <Clock className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeTokens}</div>
-            <p className="text-xs text-gray-500">Currently in queue</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Waiting</CardTitle>
-            <Users className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.waitingTokens}</div>
-            <p className="text-xs text-gray-500">Waiting to be called</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Served Today</CardTitle>
-            <CheckCircle className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.servedToday}</div>
-            <p className="text-xs text-gray-500">Completed today</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Wait Time</CardTitle>
-            <Clock className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.averageWaitTime} min
+      
+      <PageHeader
+        title={queue.name}
+        description={queue.departments?.name ?? "Queue Management"}
+        action={
+          <div className="flex items-center gap-4">
+            
+            {isConnected ? (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <Wifi className="h-3 w-3 mr-1" />
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                <WifiOff className="h-3 w-3 mr-1" />
+                Connecting...
+              </Badge>
+            )}
+            
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {queue.is_active ? "Open" : "Closed"}
+              </span>
+              <Switch
+                checked={queue.is_active}
+                onCheckedChange={(checked) => toggleQueueStatus(checked)}
+              />
             </div>
-            <p className="text-xs text-gray-500">Average wait</p>
+          </div>
+        }
+      />
+
+      
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.waiting}</p>
+                  <p className="text-sm text-muted-foreground">Waiting</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Play className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.serving}</p>
+                  <p className="text-sm text-muted-foreground">Serving</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.served}</p>
+                  <p className="text-sm text-muted-foreground">Served</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <Users className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      
+      {currentServingToken && (
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Play className="h-5 w-5 text-purple-600" />
+              Currently Serving
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl font-bold text-purple-600">
+                  #{currentServingToken.token_number}
+                </div>
+                <div>
+                  <p className="font-medium text-lg">{currentServingToken.patient_name}</p>
+                  <p className="text-sm text-muted-foreground">{currentServingToken.patient_phone}</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => completeToken(currentServingToken.id)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Complete
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
-      {/* My Assigned Queues */}
+      
+      {calledTokens.length > 0 && (
+        <Card className="border-blue-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Volume2 className="h-5 w-5 text-blue-600" />
+              Called ({calledTokens.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {calledTokens.map(token => (
+              <div key={token.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-bold text-blue-600">#{token.token_number}</div>
+                  <div>
+                    <p className="font-medium">{token.patient_name}</p>
+                    <p className="text-sm text-muted-foreground">{token.patient_phone}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => startServing(token.id)} size="sm">
+                    <Play className="h-4 w-4 mr-1" />
+                    Start
+                  </Button>
+                  <Button onClick={() => recallToken(token.id)} variant="outline" size="sm">
+                    <Volume2 className="h-4 w-4 mr-1" />
+                    Recall
+                  </Button>
+                  <Button onClick={() => skipToken(token.id)} variant="outline" size="sm">
+                    <SkipForward className="h-4 w-4 mr-1" />
+                    Skip
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      
       <Card>
         <CardHeader>
-          <CardTitle>My Assigned Queues</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Waiting Queue ({waitingTokens.length})
+            </CardTitle>
+            {nextToken && !currentServingToken && !calledTokens.length && (
+              <Button onClick={() => callToken(nextToken.id)}>
+                <Volume2 className="h-4 w-4 mr-2" />
+                Call Next
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          {queues.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-              <p>No queues assigned yet</p>
-            </div>
+          {waitingTokens.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No one waiting"
+              description="The queue is empty."
+            />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {queues.map((queue) => (
-                <Card
-                  key={queue.id}
-                  className="border-2 hover:border-blue-300 transition-colors"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold">{queue.name}</h3>
-                      <Badge
-                        variant={queue.is_active ? "default" : "secondary"}
-                      >
-                        {queue.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-
-                    {queue.description && (
-                      <p className="text-sm text-gray-500 mb-3">
-                        {queue.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between mb-3 text-sm">
-                      <span className="text-gray-600">Current Token:</span>
-                      <span className="text-2xl font-bold text-blue-600">
-                        {queue.current_token_number}
-                      </span>
-                    </div>
-
-                    <Link href={`/staff/queue/${queue.id}`}>
-                      <Button className="w-full" size="sm">
-                        Manage Queue
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
+            <div className="space-y-3">
+              {waitingTokens.map((token) => (
+                <QueueTokenCard
+                  key={token.id}
+                  token={token}
+                  onCall={callToken}
+                  onSkip={skipToken}
+                  showActions
+                />
               ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Today's Appointments */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Today&apos;s Appointments</CardTitle>
-          <Link href="/staff/appointments">
-            <Button variant="outline" size="sm">
-              View All
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {todayAppointments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Calendar className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-              <p>No appointments scheduled for today</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {todayAppointments.map((apt) => (
-                <div
-                  key={apt.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+          
+      {completedTokens.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Completed ({completedTokens.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              {completedTokens.slice(0, 12).map((token) => (
+                <div 
+                  key={token.id} 
+                  className={`p-2 rounded-lg text-center text-sm ${
+                    token.status === "served" 
+                      ? "bg-green-50 text-green-700" 
+                      : "bg-gray-100 text-gray-500"
+                  }`}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-medium text-sm">
-                        {apt.appointment_time.substring(0, 5)}
-                      </div>
-                      <div>
-                        <p className="font-medium">{apt.patient_name}</p>
-                        <p className="text-sm text-gray-500">
-                          Dr. {apt.doctors?.profiles?.full_name ?? "Not assigned"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      apt.status === "confirmed" ? "default" : "secondary"
-                    }
-                  >
-                    {apt.status}
-                  </Badge>
+                  <p className="font-bold">#{token.token_number}</p>
+                  <p className="text-xs truncate">{token.patient_name}</p>
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Link href="/staff/patients/register">
-              <Button
-                variant="outline"
-                className="w-full h-20 flex flex-col gap-2"
-              >
-                <Users className="h-6 w-6" />
-                <span className="text-sm">Register Patient</span>
-              </Button>
-            </Link>
-            <Link href="/staff/appointments">
-              <Button
-                variant="outline"
-                className="w-full h-20 flex flex-col gap-2"
-              >
-                <Calendar className="h-6 w-6" />
-                <span className="text-sm">Appointments</span>
-              </Button>
-            </Link>
-            {queues[0] && (
-              <Link href={`/staff/queue/${queues[0].id}`}>
-                <Button
-                  variant="outline"
-                  className="w-full h-20 flex flex-col gap-2"
-                >
-                  <Clock className="h-6 w-6" />
-                  <span className="text-sm">Manage Queue</span>
-                </Button>
-              </Link>
-            )}
-            <Link href="/staff/settings">
-              <Button
-                variant="outline"
-                className="w-full h-20 flex flex-col gap-2"
-              >
-                <Users className="h-6 w-6" />
-                <span className="text-sm">Settings</span>
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

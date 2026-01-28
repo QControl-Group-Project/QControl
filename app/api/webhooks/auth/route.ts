@@ -11,11 +11,11 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
 
     switch (type) {
-      case "INSERT": // User signup
+      case "INSERT": 
         console.log("New user signed up:", record.id);
         break;
 
-      case "UPDATE": // User update
+      case "UPDATE": 
         if (record.email) {
           await supabase
             .from("profiles")
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         }
         break;
 
-      case "DELETE": // User deletion
+      case "DELETE": 
         console.log("User deleted:", record.id);
         break;
     }

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const { data: appointment } = await supabase
       .from("appointments")
-      .select("*, doctors(profiles(full_name)), hospitals(name)")
+      .select("*, doctors(profiles(full_name)), businesses(name)")
       .eq("id", record.id)
       .single();
 
