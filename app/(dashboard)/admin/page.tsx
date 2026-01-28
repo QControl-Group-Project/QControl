@@ -1,143 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getSupabaseClient } from "@/lib/supabaseClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useAdminData } from "@/lib/hooks/use-admin-data";
+import { useAdminNotifications } from "@/lib/hooks/useRoleNotifications";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Calendar, Clock, Stethoscope } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Appointment, Hospital, Queue } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardChart } from "@/components/dashboard/dashboard-chart";
+import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from "react";
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
-  const [hospital, setHospital] = useState<Hospital | null>(null);
-  const [stats, setStats] = useState({
+  const { data, isLoading } = useAdminData();
+
+  const business = data?.business;
+  
+  useAdminNotifications(business?.id);
+  const stats = data?.stats || {
     totalDoctors: 0,
     totalStaff: 0,
     totalQueues: 0,
     todayAppointments: 0,
     todayTokens: 0,
     activeTokens: 0,
-  });
-  const [recentAppointments, setRecentAppointments] = useState<Appointment[]>(
-    []
-  );
-  const [activeQueues, setActiveQueues] = useState<Queue[]>([]);
-  
-  const supabase = getSupabaseClient();
+  };
+  const activeQueues = data?.activeQueues || [];
+  const recentAppointments = data?.recentAppointments || [];
 
-  useEffect(() => {
-    const loadHospitalAndStats = async () => {
-      if (!profile) return;
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
 
-      try {
-        const { data: hospitalData, error: hospitalError } = await supabase
-          .from("hospitals")
-          .select("*")
-          .eq("admin_id", profile.id)
-          .single();
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
+        </div>
 
-        if (hospitalError) {
-          console.error("Error loading hospital:", hospitalError);
-          return;
-        }
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-96 w-full rounded-lg" />
+          <Skeleton className="h-96 w-full rounded-lg" />
+        </div>
+      </div>
+    )
+  }
 
-        if (hospitalData) {
-          setHospital(hospitalData as Hospital);
-
-          const today = new Date().toISOString().split("T")[0];
-
-          const [
-            doctors,
-            staff,
-            queues,
-            appointments,
-            tokens,
-            activeTokensData,
-            activeQueuesData,
-            recentAppts,
-          ] = await Promise.all([
-            supabase
-              .from("doctors")
-              .select("*", { count: "exact", head: true })
-              .eq("hospital_id", hospitalData.id),
-            supabase
-              .from("staff_assignments")
-              .select("*", { count: "exact", head: true })
-              .eq("hospital_id", hospitalData.id),
-            supabase
-              .from("queues")
-              .select("*", { count: "exact", head: true })
-              .eq("hospital_id", hospitalData.id),
-            supabase
-              .from("appointments")
-              .select("*", { count: "exact", head: true })
-              .eq("hospital_id", hospitalData.id)
-              .eq("appointment_date", today),
-            supabase
-              .from("queue_tokens")
-              .select("*", { count: "exact", head: true })
-              .eq("hospital_id", hospitalData.id)
-              .gte("created_at", today),
-            supabase
-              .from("queue_tokens")
-              .select("*", { count: "exact", head: true })
-              .eq("hospital_id", hospitalData.id)
-              .in("status", ["waiting", "called", "serving"]),
-            supabase
-              .from("queues")
-              .select("*, departments(name)")
-              .eq("hospital_id", hospitalData.id)
-              .eq("is_active", true)
-              .limit(5),
-            supabase
-              .from("appointments")
-              .select("*, doctors(profiles(full_name))")
-              .eq("hospital_id", hospitalData.id)
-              .gte("appointment_date", today)
-              .order("appointment_date", { ascending: true })
-              .limit(5),
-          ]);
-
-          setStats({
-            totalDoctors: doctors.count || 0,
-            totalStaff: staff.count || 0,
-            totalQueues: queues.count || 0,
-            todayAppointments: appointments.count || 0,
-            todayTokens: tokens.count || 0,
-            activeTokens: activeTokensData.count || 0,
-          });
-
-          setActiveQueues((activeQueuesData.data as Queue[]) || []);
-          setRecentAppointments((recentAppts.data as Appointment[]) || []);
-        }
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
-      }
-    };
-
-    if (profile) {
-      loadHospitalAndStats();
-    }
-  }, [profile, supabase]);
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold">Business Dashboard</h1>
         <p className="text-gray-500">Welcome back, {profile?.full_name}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Doctors</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Providers</CardTitle>
             <Stethoscope className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalDoctors}</div>
-            <p className="text-xs text-gray-500">Active physicians</p>
+            <p className="text-xs text-gray-500">Active service providers</p>
           </CardContent>
         </Card>
 
@@ -155,7 +83,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Today&apos;s Appointments
+              Today&apos;s Bookings
             </CardTitle>
             <Calendar className="h-4 w-4 text-gray-500" />
           </CardHeader>
@@ -177,10 +105,11 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
+      <DashboardChart />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Appointments</CardTitle>
+            <CardTitle>Recent Bookings</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -192,7 +121,7 @@ export default function AdminDashboard() {
                   <div>
                     <p className="font-medium">{apt.patient_name}</p>
                     <p className="text-sm text-gray-500">
-                      Dr. {apt.doctors?.profiles?.full_name ?? "Not assigned"}
+                      Provider: {apt.doctors?.profiles?.full_name ?? "Not assigned"}
                     </p>
                     <p className="text-xs text-gray-400">
                       {format(new Date(apt.appointment_date), "MMM dd, yyyy")}{" "}
@@ -214,7 +143,7 @@ export default function AdminDashboard() {
               ))}
               {recentAppointments.length === 0 && (
                 <p className="text-center text-gray-500 py-4">
-                  No appointments found
+                  No bookings found
                 </p>
               )}
             </div>
@@ -226,32 +155,33 @@ export default function AdminDashboard() {
             <CardTitle>Active Queues</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {activeQueues.map((queue) => (
-                <div
-                  key={queue.id}
-                  className="flex items-center justify-between border-b pb-3 last:border-b-0"
-                >
-                  <div>
-                    <p className="font-medium">{queue.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {queue.departments?.name || "General"}
-                    </p>
+            {activeQueues.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No active queues found</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activeQueues.map((queue) => (
+                  <div
+                    key={queue.id}
+                    className="flex items-center justify-between border-b pb-3 last:border-b-0"
+                  >
+                    <div>
+                      <p className="font-medium">{queue.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {queue.departments?.name || "General"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold">
+                        {queue.current_token_number}
+                      </p>
+                      <p className="text-xs text-gray-500">Current token</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">
-                      {queue.current_token_number}
-                    </p>
-                    <p className="text-xs text-gray-500">Current token</p>
-                  </div>
-                </div>
-              ))}
-              {activeQueues.length === 0 && (
-                <p className="text-center text-gray-500 py-4">
-                  No active queues
-                </p>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RealtimeClient, PresenceState, ConnectionState } from "@/lib/supabase/realtime-client";
+import { RealtimeClient, PresenceState, ConnectionState } from "@/lib/supabase/realtime-clients";
 
 export interface PresenceUser {
   user_id: string;

@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { RealtimeClient, ConnectionState } from "@/lib/supabase/realtime-client";
+import { RealtimeClient, ConnectionState } from "@/lib/supabase/realtime-clients";
 
 export interface BroadcastEvent {
   event: string;

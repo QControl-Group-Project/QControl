@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useAdminData } from "@/lib/hooks/use-admin-data";
-import { useRealtimeDashboardData } from "@/lib/hooks/use-realtime-dashboard-data";
+import { useRealtimeDashboardData } from "@/lib/hooks/use-realtime-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Calendar, Clock, Stethoscope } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

@@ -13,7 +13,7 @@ import { useRealtimeBroadcast } from "@/lib/hooks/useRealtimeBroadcast";
 import { 
   RealtimeNotificationBell, 
   RealtimeNotificationPanel 
-} from "@/components/notifications/realtime-notifications";
+} from "@/components/notifications/realtime-notification";
 import { 
   Users, 
   Radio, 

@@ -270,4 +270,3 @@ export function useMultipleTokensTracking(queueId: string) {
 
   return { positions, refresh: updatePositions };
 }
-

@@ -3,7 +3,18 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 let supabaseClient: SupabaseClient | undefined;
 
-export function getSupabaseClient() {
+const ssrPlaceholder = new Proxy(
+  {} as SupabaseClient,
+  {
+    get() {
+      throw new Error(
+        "Supabase client is not available during SSR. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set."
+      );
+    },
+  }
+);
+
+export function getSupabaseClient(): SupabaseClient {
   if (supabaseClient) {
     return supabaseClient;
   }
@@ -14,6 +25,9 @@ export function getSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
+    if (typeof window === "undefined") {
+      return ssrPlaceholder;
+    }
     throw new Error(
       "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY."
     );

@@ -194,8 +194,8 @@ export function DashboardChart() {
                                     borderRadius: "8px",
                                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
                                 }}
-                                formatter={(value: number, name: string) => [
-                                    value,
+                                formatter={(value, name) => [
+                                    value ?? 0,
                                     name === 'appointments' ? 'Appointments' : 'Tokens'
                                 ]}
                             />

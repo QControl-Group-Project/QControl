@@ -31,7 +31,7 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/store/ui-store";
 import { RealtimeProvider } from "@/lib/providers/realtime-provider";
-import { RealtimeNotificationBell } from "@/components/notifications/realtime-notifications";
+import { RealtimeNotificationBell } from "@/components/notifications/realtime-notification";
 import {
   useAdminNotifications,
   useDoctorNotifications,
