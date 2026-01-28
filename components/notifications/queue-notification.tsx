@@ -26,7 +26,6 @@ export function QueueNotifications({ tokenId }: { tokenId: string }) {
             toast.success("Your token has been called!", {
               duration: 10000,
             });
-            // You can also trigger sound/vibration here
           }
         }
       )

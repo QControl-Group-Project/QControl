@@ -26,7 +26,6 @@ export async function createServerSupabaseClient() {
               cookieStore.set(name, value, options)
             );
           } catch (error) {
-            // ignore if called in Server Component
           }
         },
       },

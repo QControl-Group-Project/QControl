@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { appointmentSchema } from "@/lib/validation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,20 +16,21 @@ import { Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { format } from "date-fns";
 import { z } from "zod";
-import { Appointment, Doctor, Hospital } from "@/lib/types";
+import { Appointment, Doctor, Business } from "@/lib/types";
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 type SlotOption = { time: string; displayTime: string };
 
 export function AppointmentBookingForm() {
   const [loading, setLoading] = useState(false);
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [availableSlots, setAvailableSlots] = useState<SlotOption[]>([]);
-  const [selectedHospital, setSelectedHospital] = useState("");
+  const [selectedBusiness, setSelectedBusiness] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const { profile } = useAuth();
 
   const {
     register,
@@ -38,17 +40,20 @@ export function AppointmentBookingForm() {
     watch,
   } = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
+    defaultValues: {
+      appointment_type: "consultation",
+    },
   });
 
   useEffect(() => {
-    loadHospitals();
+    loadBusinesses();
   }, []);
 
   useEffect(() => {
-    if (selectedHospital) {
+    if (selectedBusiness) {
       loadDoctors();
     }
-  }, [selectedHospital]);
+  }, [selectedBusiness]);
 
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
@@ -56,13 +61,13 @@ export function AppointmentBookingForm() {
     }
   }, [selectedDoctor, selectedDate]);
 
-  const loadHospitals = async () => {
+  const loadBusinesses = async () => {
     const supabase = createClient();
     const { data } = await supabase
-      .from("hospitals")
+      .from("businesses")
       .select("*")
       .eq("is_active", true);
-    setHospitals((data as Hospital[]) || []);
+    setBusinesses((data as Business[]) || []);
   };
 
   const loadDoctors = async () => {
@@ -70,7 +75,7 @@ export function AppointmentBookingForm() {
     const { data } = await supabase
       .from("doctors")
       .select("*, profiles(full_name), specializations(name)")
-      .eq("hospital_id", selectedHospital)
+      .eq("business_id", selectedBusiness)
       .eq("is_available", true);
     setDoctors((data as Doctor[]) || []);
   };
@@ -97,10 +102,13 @@ export function AppointmentBookingForm() {
   const onSubmit = async (data: AppointmentFormValues) => {
     setLoading(true);
     try {
-      await apiClient.post("/appointments/book", data);
-      toast.success("Appointment booked successfully!");
+      await apiClient.post("/appointments/book", {
+        ...data,
+        patient_id: profile?.id,
+      });
+      toast.success("Booking confirmed!");
     } catch (error) {
-      toast.error("Failed to book appointment");
+      toast.error("Failed to book");
     } finally {
       setLoading(false);
     }
@@ -108,19 +116,19 @@ export function AppointmentBookingForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Hospital Selection */}
+      <input type="hidden" {...register("appointment_type")} />
       <div>
-        <Label>Select Hospital *</Label>
+        <Label>Select Business *</Label>
         <select
           className="w-full p-2 border rounded-md"
-          value={selectedHospital}
+          value={selectedBusiness}
           onChange={(e) => {
-            setSelectedHospital(e.target.value);
-            setValue("hospital_id", e.target.value);
+            setSelectedBusiness(e.target.value);
+            setValue("business_id", e.target.value);
           }}
         >
-          <option value="">Choose hospital...</option>
-          {hospitals.map((h) => (
+          <option value="">Choose business...</option>
+          {businesses.map((h) => (
             <option key={h.id} value={h.id}>
               {h.name}
             </option>
@@ -128,10 +136,9 @@ export function AppointmentBookingForm() {
         </select>
       </div>
 
-      {/* Doctor Selection */}
-      {selectedHospital && (
+      {selectedBusiness && (
         <div>
-          <Label>Select Doctor *</Label>
+          <Label>Select Provider *</Label>
           <select
             className="w-full p-2 border rounded-md"
             value={selectedDoctor}
@@ -140,18 +147,17 @@ export function AppointmentBookingForm() {
               setValue("doctor_id", e.target.value);
             }}
           >
-            <option value="">Choose doctor...</option>
+            <option value="">Choose provider...</option>
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>
-                Dr. {d.profiles?.full_name ?? "Doctor"} -{" "}
-                {d.specializations?.name ?? "Specialty"}
+                {d.profiles?.full_name ?? "Provider"} -{" "}
+                {d.specializations?.name ?? "Service"}
               </option>
             ))}
           </select>
         </div>
       )}
 
-      {/* Date Selection */}
       {selectedDoctor && (
         <div>
           <Label>Select Date *</Label>
@@ -168,7 +174,6 @@ export function AppointmentBookingForm() {
         </div>
       )}
 
-      {/* Time Slots */}
       {selectedDate && (
         <div>
           <Label>Available Time Slots *</Label>
@@ -202,7 +207,6 @@ export function AppointmentBookingForm() {
         </div>
       )}
 
-      {/* Patient Information */}
       {watch("appointment_time") && (
         <>
           <div>
@@ -263,13 +267,13 @@ export function AppointmentBookingForm() {
           </div>
 
           <div>
-            <Label htmlFor="symptoms">Symptoms / Reason for Visit</Label>
+            <Label htmlFor="symptoms">Reason / Notes</Label>
             <Textarea id="symptoms" {...register("symptoms")} />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? "Booking..." : "Book Appointment"}
+            {loading ? "Booking..." : "Book Service"}
           </Button>
         </>
       )}

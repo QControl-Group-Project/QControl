@@ -18,7 +18,7 @@ type RegisterFormValues = z.input<typeof registerSchema>;
 type InviteSignupFormProps = {
   token: string;
   email: string;
-  role: "doctor" | "staff";
+  role: "provider" | "staff";
 };
 
 export function InviteSignupForm({ token, email, role }: InviteSignupFormProps) {
@@ -74,8 +74,14 @@ export function InviteSignupForm({ token, email, role }: InviteSignupFormProps) 
         return;
       }
 
-      toast.success("Invitation accepted. Please sign in.");
-      router.replace("/login");
+      if (authData.session) {
+        toast.success("Account created successfully!");
+        const targetRole = result.role || role;
+        router.replace(`/${targetRole}`);
+      } else {
+        toast.success("Please check your email to verify your account.");
+        router.replace("/login");
+      }
     } catch (err) {
       toast.error("Failed to accept invitation");
     } finally {

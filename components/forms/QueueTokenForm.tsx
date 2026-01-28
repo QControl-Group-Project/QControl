@@ -13,21 +13,23 @@ import { Loader2 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { z } from "zod";
 import { QueueToken } from "@/lib/types";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 type QueueTokenFormValues = z.infer<typeof queueTokenSchema>;
 
 interface QueueTokenFormProps {
   queueId: string;
-  hospitalId: string;
+  businessId: string;
   onSuccess?: (token: QueueToken) => void;
 }
 
 export function QueueTokenForm({
   queueId,
-  hospitalId,
+  businessId,
   onSuccess,
 }: QueueTokenFormProps) {
   const [loading, setLoading] = useState(false);
+  const { profile } = useAuth();
 
   const {
     register,
@@ -47,8 +49,9 @@ export function QueueTokenForm({
       const result = await apiClient.post<{ token: QueueToken }>(
         "/queue/generate-token",
         {
-        ...data,
-        hospital_id: hospitalId,
+          ...data,
+          business_id: businessId,
+          patient_id: profile?.id ?? null,
         }
       );
       toast.success("Token generated successfully!");
@@ -110,7 +113,7 @@ export function QueueTokenForm({
       </div>
 
       <div>
-        <Label htmlFor="purpose">Purpose of Visit</Label>
+        <Label htmlFor="purpose">Reason for Visit</Label>
         <Textarea
           id="purpose"
           placeholder="Describe your reason for visit..."

@@ -1,43 +1,72 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 import { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { Profile } from "@/lib/types";
 
-export function useAuth() {
+export function useSupabaseAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [profileLoading, setProfileLoading] = useState(false);
+  const supabase = getSupabaseClient();
 
   useEffect(() => {
     let isMounted = true;
-    const fallbackTimer = setTimeout(() => {
-      if (isMounted) {
-        setLoading(false);
-      }
-    }, 3000);
+    const profileTimeoutMs = 5000; 
 
-    const getUser = async () => {
+    const loadProfile = async (userId: string) => {
+      if (!profile) {
+        setProfileLoading(true);
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (!isMounted) return;
+        setProfile(data);
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+        if (isMounted) {
+          setProfile(null);
+        }
+      } finally {
+        if (isMounted) {
+          setProfileLoading(false);
+        }
+      }
+    };
+
+    const loadSession = async () => {
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!isMounted) return;
-        setUser(user);
+        setUser(session?.user ?? null);
 
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
-          if (!isMounted) return;
-          setProfile(profile);
+        if (session?.user) {
+          if (!profile || profile.id !== session.user.id) {
+            await loadProfile(session.user.id);
+          }
+        } else {
+          setProfile(null);
+          setProfileLoading(false);
         }
       } catch (error) {
         console.error("Failed to load session:", error);
+        if (isMounted) {
+          setProfileLoading(false);
+        }
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -45,7 +74,7 @@ export function useAuth() {
       }
     };
 
-    getUser();
+    loadSession();
 
     const {
       data: { subscription },
@@ -55,18 +84,19 @@ export function useAuth() {
         try {
           setUser(session?.user ?? null);
           if (session?.user) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .single();
-            setProfile(profile);
+            if (!profile || profile.id !== session.user.id) {
+              await loadProfile(session.user.id);
+            }
           } else {
             setProfile(null);
+            setProfileLoading(false);
           }
         } catch (error) {
           if ((error as Error)?.name !== "AbortError") {
             console.error("Failed to refresh session:", error);
+          }
+          if (isMounted) {
+            setProfileLoading(false);
           }
         } finally {
           setLoading(false);
@@ -76,10 +106,11 @@ export function useAuth() {
 
     return () => {
       isMounted = false;
-      clearTimeout(fallbackTimer);
       subscription.unsubscribe();
     };
   }, []);
 
-  return { user, profile, loading, supabase };
+  return { user, profile, loading, profileLoading, supabase };
 }
+
+export const useAuth = useSupabaseAuth;

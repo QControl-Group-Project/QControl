@@ -16,7 +16,7 @@ export function useQueue(queueId: string) {
   const loadQueue = async () => {
     const { data, error } = await supabase
       .from("queues")
-      .select("*, hospitals(name), departments(name)")
+      .select("*, businesses(name), departments(name)")
       .eq("id", queueId)
       .single();
 
@@ -65,7 +65,6 @@ export function useQueue(queueId: string) {
     loadTokens();
     loadStats();
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel(`queue_${queueId}`)
       .on(
@@ -86,7 +85,6 @@ export function useQueue(queueId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueId]);
 
   const callToken = async (tokenId: string) => {

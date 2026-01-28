@@ -58,7 +58,7 @@ export function AppointmentCalendar({
         <CardContent>
           {appointmentsOnDate.length === 0 ? (
             <p className="text-center text-gray-500 py-8">
-              No appointments on this date
+              No bookings on this date
             </p>
           ) : (
             <div className="space-y-3">

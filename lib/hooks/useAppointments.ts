@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 export function useAppointments(filters?: {
   doctorId?: string;
   patientId?: string;
-  hospitalId?: string;
+  businessId?: string;
   date?: string;
   status?: string;
 }) {
@@ -21,7 +21,7 @@ export function useAppointments(filters?: {
     let query = supabase
       .from("appointments")
       .select(
-        "*, doctors(profiles(full_name), specializations(name)), hospitals(name)"
+        "*, doctors(profiles(full_name), specializations(name)), businesses(name)"
       );
 
     if (filters?.doctorId) {
@@ -30,8 +30,8 @@ export function useAppointments(filters?: {
     if (filters?.patientId) {
       query = query.eq("patient_id", filters.patientId);
     }
-    if (filters?.hospitalId) {
-      query = query.eq("hospital_id", filters.hospitalId);
+    if (filters?.businessId) {
+      query = query.eq("business_id", filters.businessId);
     }
     if (filters?.date) {
       query = query.eq("appointment_date", filters.date);
@@ -60,10 +60,8 @@ export function useAppointments(filters?: {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAppointments();
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel("appointments_changes")
       .on(
