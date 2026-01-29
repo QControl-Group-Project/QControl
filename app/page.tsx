@@ -151,7 +151,7 @@ export default async function Page() {
             <div className="rounded-sm border bg-card p-2 shadow-2xl">
               <div className="rounded-sm bg-muted overflow-hidden">
                 <Image
-                  src="/hero-black.png"
+                  src="/hero-image.png"
                   alt="Interface Preview"
                   width={1400}
                   height={800}
