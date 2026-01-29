@@ -19,7 +19,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "MediQueue",
+  title: "QControl",
   description:
     "Queue and booking management for service businesses and teams.",
 };
