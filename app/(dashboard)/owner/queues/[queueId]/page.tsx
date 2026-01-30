@@ -1,7 +1,9 @@
 "use client";
 
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useRealtimeQueue } from "@/lib/hooks/useRealtimeQueue";
+import { useRealtimeContext } from "@/lib/providers/realtime-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { EmptyState } from "@/components/layouts/EmptyState";
 import { QueueTokenCard } from "@/components/queue/QueueTokenCard";
+import QRCode from "react-qr-code";
 import { 
   ClipboardList, 
   Users, 
@@ -28,6 +31,9 @@ export default function AdminQueueDetailPage() {
   const queueId = Array.isArray(params.queueId)
     ? params.queueId[0]
     : params.queueId;
+  const [copied, setCopied] = useState(false);
+  const qrWrapperRef = useRef<HTMLDivElement | null>(null);
+  const { broadcast } = useRealtimeContext();
 
   const {
     queue,
@@ -53,6 +59,99 @@ export default function AdminQueueDetailPage() {
       }
     },
   });
+
+  const shareUrl = useMemo(() => {
+    if (!queue) return "";
+    const path = `/queue/${queue.business_id}?queue=${queue.id}`;
+    if (typeof window === "undefined") return path;
+    return `${window.location.origin}${path}`;
+  }, [queue]);
+
+  const handleCopyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy share link:", error);
+    }
+  };
+
+  const handleDownloadQr = () => {
+    const svg = qrWrapperRef.current?.querySelector("svg");
+    if (!svg || !shareUrl) return;
+
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svg);
+    if (!source.includes("xmlns=")) {
+      source = source.replace(
+        "<svg",
+        '<svg xmlns="http://www.w3.org/2000/svg"'
+      );
+    }
+
+    const svgBlob = new Blob([source], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const pngUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = pngUrl;
+      link.download = `queue-qr-${queue?.id ?? "code"}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+    img.src = url;
+  };
+
+  const notifyTokenCustomer = useCallback(
+    async (tokenId: string, action: "called" | "skipped" | "recalled") => {
+      const token = tokens.find((item) => item.id === tokenId);
+      if (!token?.patient_id) return;
+      const tokenLabel = token.token_number ? `#${token.token_number}` : "your token";
+      const title =
+        action === "skipped" ? "Token Skipped" : "Token Called";
+      const message =
+        action === "skipped"
+          ? `Token ${tokenLabel} was skipped. Please contact the counter.`
+          : `Token ${tokenLabel} has been called. Please proceed to the counter.`;
+
+      await broadcast("notification", {
+        type: action === "skipped" ? "error" : "warning",
+        title,
+        message,
+        userId: token.patient_id,
+        data: { tokenId, status: action },
+      });
+    },
+    [tokens, broadcast]
+  );
+
+  const handleCallToken = async (tokenId: string) => {
+    await callToken(tokenId);
+    await notifyTokenCustomer(tokenId, "called");
+  };
+
+  const handleRecallToken = async (tokenId: string) => {
+    await recallToken(tokenId);
+    await notifyTokenCustomer(tokenId, "recalled");
+  };
+
+  const handleSkipToken = async (tokenId: string) => {
+    await skipToken(tokenId);
+    await notifyTokenCustomer(tokenId, "skipped");
+  };
 
   if (!queueId) {
     return (
@@ -206,6 +305,36 @@ export default function AdminQueueDetailPage() {
         </div>
       )}
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Share This Queue</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div ref={qrWrapperRef} className="rounded-lg border bg-white p-3">
+              <QRCode value={shareUrl || queue.id} size={140} />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Share this QR so customers can join the queue without logging in.
+              </p>
+              <p className="text-xs text-muted-foreground break-all">{shareUrl}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleCopyShareLink}>
+              {copied ? "Copied" : "Copy Link"}
+            </Button>
+            <Button variant="outline" onClick={handleDownloadQr}>
+              Download PNG
+            </Button>
+            <Button onClick={() => window.open(shareUrl, "_blank")}>
+              Open Link
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       
       {currentServingToken && (
         <Card className="border-purple-200 bg-purple-50">
@@ -264,11 +393,11 @@ export default function AdminQueueDetailPage() {
                     <Play className="h-4 w-4 mr-1" />
                     Start
                   </Button>
-                  <Button onClick={() => recallToken(token.id)} variant="outline" size="sm">
+                  <Button onClick={() => handleRecallToken(token.id)} variant="outline" size="sm">
                     <Volume2 className="h-4 w-4 mr-1" />
                     Recall
                   </Button>
-                  <Button onClick={() => skipToken(token.id)} variant="outline" size="sm">
+                  <Button onClick={() => handleSkipToken(token.id)} variant="outline" size="sm">
                     <SkipForward className="h-4 w-4 mr-1" />
                     Skip
                   </Button>
@@ -288,7 +417,7 @@ export default function AdminQueueDetailPage() {
               Waiting Queue ({waitingTokens.length})
             </CardTitle>
             {nextToken && !currentServingToken && !calledTokens.length && (
-              <Button onClick={() => callToken(nextToken.id)}>
+              <Button onClick={() => handleCallToken(nextToken.id)}>
                 <Volume2 className="h-4 w-4 mr-2" />
                 Call Next
               </Button>
@@ -308,8 +437,8 @@ export default function AdminQueueDetailPage() {
                 <QueueTokenCard
                   key={token.id}
                   token={token}
-                  onCall={callToken}
-                  onSkip={skipToken}
+                  onCall={handleCallToken}
+                  onSkip={handleSkipToken}
                   showActions
                 />
               ))}

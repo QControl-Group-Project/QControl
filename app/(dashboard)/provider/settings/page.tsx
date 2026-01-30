@@ -19,7 +19,7 @@ type ProfileFormValues = Pick<
 >;
 
 export default function DoctorSettingsPage() {
-  const { profile, loading, supabase } = useAuth();
+  const { profile, loading: authLoading, profileLoading, supabase } = useAuth();
   const [saving, setSaving] = useState(false);
   const providerLabel = "Provider";
   const {
@@ -74,7 +74,9 @@ export default function DoctorSettingsPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner text="Loading settings..." />;
+  if (authLoading || profileLoading) {
+    return <LoadingSpinner text="Loading settings..." />;
+  }
   if (!profile) return null;
 
   return (

@@ -9,13 +9,13 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
-    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="space-y-1">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="font-display text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
           {title}
         </h1>
         {description && (
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
+          <p className="max-w-2xl text-xs text-muted-foreground sm:text-sm">
             {description}
           </p>
         )}

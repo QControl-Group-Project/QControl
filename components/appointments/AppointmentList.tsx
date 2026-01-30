@@ -9,6 +9,7 @@ interface AppointmentListProps {
   appointments: Appointment[];
   onUpdateStatus?: (id: string, status: string) => void;
   onCancel?: (id: string) => void;
+  onDelete?: (id: string) => void;
   showActions?: boolean;
   emptyMessage?: string;
   layout?: "list" | "grid";
@@ -19,6 +20,7 @@ export function AppointmentList({
   appointments,
   onUpdateStatus,
   onCancel,
+  onDelete,
   showActions,
   emptyMessage = "No bookings found",
   layout = "list",
@@ -48,6 +50,7 @@ export function AppointmentList({
           appointment={appointment}
           onUpdateStatus={onUpdateStatus}
           onCancel={onCancel}
+          onDelete={onDelete}
           showActions={showActions}
           variant={cardVariant}
         />

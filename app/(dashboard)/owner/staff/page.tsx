@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/layouts/EmptyState";
-import { Users } from "lucide-react";
+import { Trash2, Users } from "lucide-react";
 import { Profile, StaffAssignment } from "@/lib/types";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
@@ -150,6 +150,27 @@ export default function AdminStaffPage() {
     loadStaff(businessId);
   };
 
+  const handleRemoveStaff = async (assignmentId: string, staffName?: string) => {
+    if (!businessId) return;
+    const confirmed = window.confirm(
+      `Remove ${staffName ?? "this staff member"} from your business?`
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("staff_assignments")
+      .delete()
+      .eq("id", assignmentId);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Staff removed");
+    setStaff((prev) => prev.filter((item) => item.id !== assignmentId));
+  };
+
   if (!businessId) {
     return (
       <div className="p-6">
@@ -270,9 +291,21 @@ export default function AdminStaffPage() {
                       {item.role}
                     </p>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {item.is_active ? "Active" : "Inactive"}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500">
+                      {item.is_active ? "Active" : "Inactive"}
+                    </span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() =>
+                        handleRemoveStaff(item.id, staffProfile?.full_name)
+                      }
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
                 </div>
                 );
               })}

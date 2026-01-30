@@ -118,8 +118,9 @@ export function usePatientNotifications() {
               message: `Your queue token #${token.token_number} has been created`,
               userId: user.id,
             });
-          } else if (payload.eventType === "UPDATE" && oldToken) {
-            if (oldToken.status !== token.status) {
+          } else if (payload.eventType === "UPDATE") {
+            const statusChanged = oldToken ? oldToken.status !== token.status : true;
+            if (statusChanged) {
               if (token.status === "called") {
                 toast({
                   title: "🔔 Your Token is Called!",
@@ -147,10 +148,35 @@ export function usePatientNotifications() {
                   title: "✅ Now Being Served",
                   description: "Your consultation has started",
                 });
+                broadcast("notification", {
+                  type: "info",
+                  title: "Now Being Served",
+                  message: "Your consultation has started",
+                  userId: user.id,
+                });
               } else if (token.status === "served") {
                 toast({
                   title: "✅ Service Completed",
                   description: "Thank you for your patience!",
+                });
+                broadcast("notification", {
+                  type: "success",
+                  title: "Service Completed",
+                  message: "Thank you for your patience!",
+                  userId: user.id,
+                });
+              } else if (token.status === "skipped") {
+                toast({
+                  title: "⚠️ Token Skipped",
+                  description: `Token #${token.token_number} was skipped. Please contact the counter.`,
+                  variant: "destructive",
+                });
+
+                broadcast("notification", {
+                  type: "error",
+                  title: "Token Skipped",
+                  message: `Token #${token.token_number} was skipped`,
+                  userId: user.id,
                 });
               }
             }

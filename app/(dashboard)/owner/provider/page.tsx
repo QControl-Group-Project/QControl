@@ -7,9 +7,10 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Doctor } from "@/lib/types";
+import { toast } from "sonner";
 
 export default function DoctorsPage() {
   const { profile } = useAuth();
@@ -46,6 +47,22 @@ export default function DoctorsPage() {
     }
   }, [profile]);
 
+  const handleDeleteDoctor = async (doctorId: string, name?: string) => {
+    const confirmed = window.confirm(
+      `Delete ${name ?? "this provider"}? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("doctors").delete().eq("id", doctorId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Provider deleted");
+    setDoctors((prev) => prev.filter((item) => item.id !== doctorId));
+  };
+
   const columns = [
     {
       key: "profiles.full_name",
@@ -72,6 +89,20 @@ export default function DoctorsPage() {
         </Badge>
       ),
     },
+    {
+      key: "actions",
+      label: "Delete",
+      render: (d: Doctor) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => handleDeleteDoctor(d.id, d.profiles?.full_name)}
+          aria-label={`Delete ${d.profiles?.full_name ?? "provider"}`}
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </Button>
+      ),
+    },
   ];
 
   const providerLabel = "Provider";
@@ -96,9 +127,6 @@ export default function DoctorsPage() {
         columns={columns}
         searchable
         searchPlaceholder={`Search ${providerLabel.toLowerCase()}s...`}
-        onRowClick={(doctor) =>
-          (window.location.href = `/owner/doctors/${doctor.id}`)
-        }
       />
     </div>
   );

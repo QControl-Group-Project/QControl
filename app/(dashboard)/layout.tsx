@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSupabaseAuth, useAuth } from "@/lib/hooks/use-auth";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -51,11 +51,12 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, profile, loading, profileLoading, supabase } = useSupabaseAuth();
+  const { user, profile, loading, profileLoading, supabase } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useUIStore();
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!loading && !user && !hasRedirected) {
@@ -65,14 +66,20 @@ export default function DashboardLayout({
   }, [user, loading, router, hasRedirected]);
 
   const handleLogout = useCallback(async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Logout error:", error);
+      }
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      router.push("/");
+      router.replace("/");
+      setIsLoggingOut(false);
     }
-  }, [supabase, router]);
+  }, [supabase, router, isLoggingOut]);
 
   const providerLabel = "Provider";
 
@@ -161,7 +168,7 @@ export default function DashboardLayout({
       <div className="flex min-h-screen bg-background">
         <aside
           className={cn(
-            "bg-card/95 border-r transition-all duration-300 flex-shrink-0 flex flex-col shadow-[0_20px_60px_-50px_rgba(10,20,30,0.6)] backdrop-blur-xl fixed inset-y-0 left-0 md:relative md:translate-x-0 z-40",
+            "bg-card/95 border-r transition-all duration-300 flex-shrink-0 flex flex-col  backdrop-blur-xl fixed inset-y-0 left-0 md:relative md:translate-x-0 z-40",
             sidebarOpen ? "w-64" : "w-20 md:w-20",
             !sidebarOpen && "-translate-x-full md:translate-x-0"
           )}
@@ -184,9 +191,7 @@ export default function DashboardLayout({
                   <span className="text-xs font-black uppercase tracking-[0.22em] text-muted-foreground">
                     QCONTROL
                   </span>
-                  <span className="text-sm font-medium text-foreground">
-                    Control Console
-                  </span>
+                  
                 </div>
               </Link>
             )}
@@ -213,9 +218,9 @@ export default function DashboardLayout({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                    "flex items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-all",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                      ? "bg-neutral-700 dark:bg-neutral-300 text-white dark:text-black shadow-sm border-2 border-neutral-500 "
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                   aria-current={isActive ? "page" : undefined}
@@ -283,9 +288,9 @@ export default function DashboardLayout({
                       <Settings className="mr-2 h-4 w-4" />
                       Settings
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout}>
+                    <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Logout
+                      {isLoggingOut ? "Logging out..." : "Logout"}
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
@@ -293,10 +298,8 @@ export default function DashboardLayout({
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto pt-16 md:pt-0">
-            <Suspense fallback={null}>
-              <SessionDebugWrapper />
-            </Suspense>
+          <div className="flex-1 overflow-y-auto  md:pt-0">
+           
             {children}
           </div>
         </main>

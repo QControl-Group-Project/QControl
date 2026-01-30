@@ -126,6 +126,12 @@ export function RealtimeProvider({
 
     switch (event.event) {
       case "notification":
+        if (
+          event.payload?.userId &&
+          event.payload.userId !== user?.id
+        ) {
+          return;
+        }
         addNotification({
           type: event.payload.type || "info",
           title: event.payload.title,

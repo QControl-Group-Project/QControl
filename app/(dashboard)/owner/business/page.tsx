@@ -22,7 +22,7 @@ import { Business } from "@/lib/types";
 type BusinessFormValues = z.infer<typeof businessSchema>;
 
 export default function BusinessSettingsPage() {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, profileLoading } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,10 +63,8 @@ export default function BusinessSettingsPage() {
   useEffect(() => {
     if (profile) {
       loadBusiness();
-    } else if (!authLoading) {
-      setLoading(false);
     }
-  }, [profile, authLoading]);
+  }, [profile]);
 
   const onSubmit = async (data: BusinessFormValues) => {
     if (!profile) return;
@@ -102,7 +100,7 @@ export default function BusinessSettingsPage() {
     }
   };
 
-  if (loading || authLoading) return <LoadingSpinner />;
+  if (authLoading || profileLoading || loading) return <LoadingSpinner />;
 
   if (!profile) {
     return (

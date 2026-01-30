@@ -1,11 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { Profile } from "@/lib/types";
 
-export function useSupabaseAuth() {
+type AuthContextValue = {
+  user: User | null;
+  profile: Profile | null;
+  loading: boolean;
+  profileLoading: boolean;
+  supabase: ReturnType<typeof getSupabaseClient>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function useSupabaseAuthInternal() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,4 +130,22 @@ export function useSupabaseAuth() {
   return { user, profile, loading, profileLoading, supabase };
 }
 
-export const useAuth = useSupabaseAuth;
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const auth = useSupabaseAuthInternal();
+  const value = useMemo(
+    () => auth,
+    [auth.user, auth.profile, auth.loading, auth.profileLoading, auth.supabase]
+  );
+
+  return createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
+
+export const useSupabaseAuth = useAuth;

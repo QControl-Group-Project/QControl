@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AbortErrorGuard } from "@/components/shared/AbortErrorGuard";
+import { AuthProvider } from "@/lib/hooks/use-auth";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -43,9 +44,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <AbortErrorGuard />
-            <Toaster />
-            {children}
+            <AuthProvider>
+              <AbortErrorGuard />
+              <Toaster />
+              {children}
+            </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

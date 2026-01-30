@@ -40,6 +40,11 @@ export default function TrackTokenPage() {
               Back
             </Button>
           </Link>
+          <Link href="/customer">
+            <Button variant="outline" size="sm">
+              Return to Dashboard
+            </Button>
+          </Link>
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>

@@ -20,7 +20,7 @@ type ProfileFormValues = Pick<
 >;
 
 export default function PatientProfilePage() {
-  const { profile, loading, supabase } = useAuth();
+  const { profile, loading: authLoading, profileLoading, supabase } = useAuth();
   const [saving, setSaving] = useState(false);
   const router = useRouter();
   const {
@@ -84,7 +84,9 @@ export default function PatientProfilePage() {
     }
   };
 
-  if (loading) return <LoadingSpinner text="Loading profile..." />;
+  if (authLoading || profileLoading) {
+    return <LoadingSpinner text="Loading profile..." />;
+  }
   if (!profile) return null;
 
   return (

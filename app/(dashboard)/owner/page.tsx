@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardChart } from "@/components/dashboard/dashboard-chart";
 
 export default function AdminDashboard() {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile } = useAuth();
   const { data, isLoading } = useAdminData();
 
   const business = data?.business;

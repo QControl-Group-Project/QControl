@@ -13,12 +13,14 @@ import {
   FileText,
   Hash,
   Stethoscope,
+  Trash2,
 } from "lucide-react";
 
 interface AppointmentCardProps {
   appointment: Appointment;
   onUpdateStatus?: (id: string, status: string) => void;
   onCancel?: (id: string) => void;
+  onDelete?: (id: string) => void;
   showActions?: boolean;
   variant?: "default" | "customer";
 }
@@ -27,6 +29,7 @@ export function AppointmentCard({
   appointment,
   onUpdateStatus,
   onCancel,
+  onDelete,
   showActions = false,
   variant = "default",
 }: AppointmentCardProps) {
@@ -197,6 +200,16 @@ export function AppointmentCard({
                   Cancel
                 </Button>
               )}
+            {onDelete && (
+              <Button
+                onClick={() => onDelete(appointment.id)}
+                variant="destructive"
+                size="sm"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

@@ -26,7 +26,7 @@ type NewService = {
 };
 
 export default function AdminSettingsPage() {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, profileLoading } = useAuth();
   const supabase = createClient();
   const [business, setBusiness] = useState<Business | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -78,10 +78,8 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     if (profile) {
       loadData();
-    } else if (!authLoading) {
-      setLoading(false);
     }
-  }, [profile, authLoading]);
+  }, [profile]);
 
   const handleAddDepartment = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -146,7 +144,7 @@ export default function AdminSettingsPage() {
     setSavingService(false);
   };
 
-  if (loading || authLoading) return <LoadingSpinner />;
+  if (authLoading || profileLoading || loading) return <LoadingSpinner />;
 
   if (!profile) {
     return (

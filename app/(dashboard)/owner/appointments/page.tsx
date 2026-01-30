@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentList } from "@/components/appointments/AppointmentList";
 import { Appointment } from "@/lib/types";
+import { toast } from "sonner";
 
 export default function AdminAppointmentsPage() {
   const { profile } = useAuth();
@@ -72,6 +73,26 @@ export default function AdminAppointmentsPage() {
     await updateStatus(appointmentId, "cancelled");
   };
 
+  const deleteAppointment = async (appointmentId: string) => {
+    const confirmed = window.confirm(
+      "Delete this booking? This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", appointmentId);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Booking deleted");
+    setAppointments((prev) => prev.filter((item) => item.id !== appointmentId));
+  };
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
@@ -83,6 +104,7 @@ export default function AdminAppointmentsPage() {
         appointments={appointments}
         onUpdateStatus={updateStatus}
         onCancel={cancelAppointment}
+        onDelete={deleteAppointment}
         showActions={!loading}
         emptyMessage="No bookings yet"
         layout="grid"

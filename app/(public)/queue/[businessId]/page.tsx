@@ -22,6 +22,7 @@ export default function QueueTokenPage() {
   const [generatedToken, setGeneratedToken] = useState<QueueToken | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("get-token");
+  const [tokenCopied, setTokenCopied] = useState(false);
   const qrWrapperRef = useRef<HTMLDivElement | null>(null);
   
   const supabase = createClient();
@@ -84,15 +85,40 @@ export default function QueueTokenPage() {
       );
     }
 
-    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `queue-token-${generatedToken.token_number}.svg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const svgBlob = new Blob([source], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const size = 512;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      const pngUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = pngUrl;
+      link.download = `queue-token-${generatedToken.token_number}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+    img.src = url;
+  };
+
+  const handleCopyToken = async () => {
+    if (!generatedToken) return;
+    try {
+      await navigator.clipboard.writeText(generatedToken.id);
+      setTokenCopied(true);
+      window.setTimeout(() => setTokenCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy token:", error);
+    }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -133,8 +159,20 @@ export default function QueueTokenPage() {
               </div>
             </div>
 
+            <div className="flex items-center justify-between gap-3 rounded-lg border bg-white p-3">
+              <div>
+                <p className="text-xs uppercase text-gray-500">Tracking Code</p>
+                <p className="text-sm font-mono text-gray-800 break-all">
+                  {generatedToken.id}
+                </p>
+              </div>
+              <Button variant="outline" onClick={handleCopyToken}>
+                {tokenCopied ? "Copied" : "Copy Tracking Code"}
+              </Button>
+            </div>
+
             <Button variant="outline" onClick={handleDownloadQr}>
-              Download QR
+              Download PNG
             </Button>
 
             <p className="text-sm text-center text-gray-600">

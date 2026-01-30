@@ -8,7 +8,7 @@ import { usePatientNotifications } from "@/lib/hooks/useRoleNotifications";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Calendar, Clock, Ticket, Plus, User, MapPin } from "lucide-react";
+import { Calendar, Clock, Ticket, Plus, User, MapPin, ArrowRight, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -29,255 +29,250 @@ export default function PatientDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Customer Dashboard</h1>
-        <p className="text-gray-500">
-          {profile ? `Welcome back, ${profile.full_name}` : <Skeleton className="h-4 w-48 inline-block" />}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link href="/appointments">
-          <Card className="cursor-pointer hover:shadow-lg transition-all hover:scale-105">
-            <CardContent className="flex items-center justify-between p-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-1">Book a Service</h3>
-                <p className="text-sm text-gray-500">
-                  Schedule a visit with a provider
-                </p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Calendar className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/queue/select">
-          <Card className="cursor-pointer hover:shadow-lg transition-all hover:scale-105">
-            <CardContent className="flex items-center justify-between p-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-1">Get Queue Token</h3>
-                <p className="text-sm text-gray-500">Join a queue</p>
-              </div>
-              <div className="bg-green-100 p-3 rounded-full">
-                <Ticket className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          { title: "Total Bookings", value: stats.totalAppointments, icon: Calendar },
-          { title: "Upcoming", value: stats.upcomingAppointments, icon: Clock },
-          { title: "Completed", value: stats.completedAppointments, icon: Calendar },
-          { title: "Active Tokens", value: stats.activeTokens, icon: Ticket }
-        ].map((item, i) => (
-          <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {item.title}
-              </CardTitle>
-              <item.icon className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-8 w-16" />
+    <div className="min-h-screen bg-background p-3 md:p-4 lg:p-6 transition-colors duration-300">
+      <div className="space-y-6">
+        
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Customer Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              {profile ? (
+                `Welcome back, ${profile.full_name}`
               ) : (
-                <div className="text-2xl font-bold">{item.value}</div>
+                <Skeleton className="h-5 w-48 inline-block" />
               )}
-              <p className="text-xs text-gray-500">
-                {i === 0 ? "All time" : i === 1 ? "Scheduled" : i === 2 ? "Total completed" : "In queue"}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {loading ? (
-        <Card>
-          <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
-            </div>
-          </CardContent>
-        </Card>
-      ) : activeTokens.length > 0 && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Active Queue Tokens</CardTitle>
-            <Link href="/customer/tokens">
-              <Button variant="outline" size="sm">
-                View All
+            </p>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link href="/appointments">
+              <Button className="w-full sm:w-auto gap-2 shadow-sm">
+                <Calendar className="h-4 w-4" />
+                Book a Service
+                <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-  <div className="space-y-3">
-    {activeTokens.map((token) => (
-      <Card
-        key={token.id}
-        className="group relative overflow-hidden border-muted bg-card hover:bg-accent/5 transition-all duration-200"
-      >
-        
-        <div className="absolute left-0 top-0 h-full w-1 bg-primary" />
-        
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-             
-              <div className="flex flex-col items-center justify-center min-w-[60px] h-16 rounded-lg bg-muted/50 dark:bg-muted/20 border border-border">
-                <span className="text-2xl font-black text-foreground leading-none">
-                 
-                  {token.token_number || "#"}
-                </span>
-                <Badge
-                  variant={
-                    token.status === "waiting"
-                      ? "secondary"
-                      : token.status === "called"
-                        ? "default"
-                        : "destructive"
-                  }
-                  className="mt-1 h-4 text-[10px] uppercase px-1.5"
-                >
-                  {token.status}
-                </Badge>
-              </div>
-
-            
-              <div className="space-y-0.5">
-                <h3 className="font-bold text-foreground leading-none">
-                  {token.businesses?.name ?? "Business"}
-                </h3>
-                <p className="text-sm font-medium text-muted-foreground">
-                  {token.queues?.name ?? "Queue"}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Est. wait: {token.queues?.estimated_wait_time ?? 0}min / person</span>
-                </div>
-              </div>
-            </div>
-
-          
-            <Link href={`/track-token/${token.id}`}>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="shadow-sm hover:bg-primary hover:text-primary-foreground"
-              >
-                Track
+            <Link href="/queue/select">
+              <Button variant="outline" className="w-full sm:w-auto gap-2 border-primary/50 hover:bg-primary/10">
+                <Ticket className="h-4 w-4" />
+                Get Queue Token
               </Button>
             </Link>
           </div>
-        </CardContent>
-      </Card>
-    ))}
-  </div>
-</CardContent>
-        </Card>
-      )}
+        </div>
 
-     
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Upcoming Bookings</CardTitle>
-          <Link href="/customer/appointments">
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              View All
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
-            </div>
-          ) : upcomingAppointments.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No upcoming bookings</p>
-              <Link href="/appointments">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Book Your First Service
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {upcomingAppointments.map((apt) => (
-                <Card
-                  key={apt.id}
-                  className="border hover:shadow-md transition-shadow"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="bg-blue-100 text-blue-600 px-3 py-1 rounded font-semibold text-sm">
-                            {format(
-                              new Date(apt.appointment_date),
-                              "MMM dd, yyyy"
-                            )}
-                          </div>
-                          <div className="bg-gray-100 px-3 py-1 rounded text-sm font-medium">
-                            {apt.appointment_time.substring(0, 5)}
-                          </div>
-                        </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {[
+            { 
+              title: "Total Bookings", 
+              value: stats.totalAppointments, 
+              icon: Calendar,
+              color: "text-blue-500",
+              bgColor: "bg-blue-500/10"
+            },
+            { 
+              title: "Upcoming", 
+              value: stats.upcomingAppointments, 
+              icon: Clock,
+              color: "text-amber-500",
+              bgColor: "bg-amber-500/10"
+            },
+            { 
+              title: "Completed", 
+              value: stats.completedAppointments, 
+              icon: Activity,
+              color: "text-emerald-500",
+              bgColor: "bg-emerald-500/10"
+            },
+            { 
+              title: "Active Tokens", 
+              value: stats.activeTokens, 
+              icon: Ticket,
+              color: "text-purple-500",
+              bgColor: "bg-purple-500/10"
+            }
+          ].map((item, i) => (
+            <Card key={i} className="border-border bg-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className={`p-2 rounded-lg ${item.bgColor}`}>
+                    <item.icon className={`h-4 w-4 ${item.color}`} />
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-7 w-12" />
+                  ) : (
+                    <span className="text-xl font-bold text-foreground">{item.value}</span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-muted-foreground mt-2">{item.title}</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">
+                  {i === 0 ? "All time" : i === 1 ? "Scheduled" : i === 2 ? "Finished" : "In queue"}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="font-semibold">
-                              {apt.doctors?.profiles?.full_name ?? "Not set"}
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+          
+          {/* Active Queue Tokens Section */}
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader className="p-4 pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-bold text-foreground">Active Queue Tokens</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Current queue positions</p>
+                </div>
+                <Link href="/customer/tokens">
+                  <Button variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground">
+                    View All
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="p-4 space-y-3">
+                  {[1, 2].map(i => (
+                    <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : activeTokens.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {activeTokens.map((token) => (
+                    <div key={token.id} className="p-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {/* Token Number */}
+                          <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-blue-500/10 border border-blue-500/20 flex-shrink-0">
+                            <span className="text-xl font-black text-blue-600 dark:text-blue-400">
+                              {token.token_number || "#"}
                             </span>
-                            <span className="text-sm text-gray-500">
-                              • {apt.doctors?.specializations?.name ?? "Specialty"}
-                            </span>
+                            <Badge variant="outline" className="mt-0.5 text-[10px] uppercase px-1 py-0 h-4 bg-background">
+                              {token.status}
+                            </Badge>
                           </div>
 
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <MapPin className="h-4 w-4 text-gray-400" />
-                            <span>{apt.businesses?.name ?? "Business"}</span>
-                          </div>
-
-                          {apt.symptoms && (
-                            <p className="text-sm text-gray-600 mt-2">
-                              Reason: {apt.symptoms}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-foreground text-sm truncate">
+                              {token.businesses?.name ?? "Business"}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-medium truncate">
+                              {token.queues?.name ?? "Queue"}
                             </p>
-                          )}
+                            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+                              <span className="truncate">Est. wait: {token.queues?.estimated_wait_time ?? 0}min</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex flex-col gap-2 items-end">
-                        <Badge
-                          variant={
-                            apt.status === "confirmed" ? "default" : "secondary"
-                          }
-                        >
-                          {apt.status}
-                        </Badge>
-                        <Link href={`/customer/appointments/${apt.id}`}>
-                          <Button size="sm" variant="outline">
-                            View Details
-                          </Button>
+                        <Link href={`/track-token/${token.id}`}>
+                          <Button size="sm" className="h-8">Track</Button>
                         </Link>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={Ticket} title="No active tokens" desc="Join a queue to get started" />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Bookings Section */}
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader className="p-4 pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-bold text-foreground">Upcoming Bookings</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Scheduled appointments</p>
+                </div>
+                <Link href="/customer/appointments">
+                  <Button variant="ghost" size="sm" className="h-8 text-muted-foreground">
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    View All
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="p-4 space-y-3">
+                  {[1, 2].map(i => (
+                    <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : upcomingAppointments.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {upcomingAppointments.map((apt) => (
+                    <div key={apt.id} className="p-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2.5 py-0.5 rounded font-bold text-xs flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(apt.appointment_date), "MMM dd, yyyy")}
+                            </div>
+                            <div className="bg-muted text-muted-foreground px-2.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {apt.appointment_time.substring(0, 5)}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="font-semibold text-foreground truncate">
+                                {apt.doctors?.profiles?.full_name ?? "Not set"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <MapPin className="h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" />
+                              <span className="truncate">{apt.businesses?.name ?? "Business"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
+                          <Badge 
+                            variant={apt.status === "confirmed" ? "default" : "secondary"}
+                            className={apt.status === "confirmed" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : ""}
+                          >
+                            {apt.status}
+                          </Badge>
+                          <Link href={`/customer/appointments/${apt.id}`}>
+                            <Button size="sm" variant="outline" className="h-7 text-xs">Details</Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={Calendar} title="No upcoming bookings" desc="Schedule your first visit" />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
+  return (
+    <div className="text-center py-8 px-4">
+      <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+        <Icon className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <p className="text-foreground font-medium text-sm mb-1">{title}</p>
+      <p className="text-xs text-muted-foreground mb-3">{desc}</p>
     </div>
   );
 }

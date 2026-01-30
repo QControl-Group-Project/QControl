@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getTokenStatusColor, formatTime, timeAgo } from "@/lib/utils";
-import { Clock, User, Phone, MapPin, Timer, Ticket } from "lucide-react";
+import { Clock, User, Phone, MapPin, Timer, Ticket, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface QueueTokenCardProps {
@@ -14,8 +14,10 @@ interface QueueTokenCardProps {
   onServe?: (tokenId: string) => void;
   onComplete?: (tokenId: string) => void;
   onSkip?: (tokenId: string) => void;
+  onDelete?: (tokenId: string) => void;
   showActions?: boolean;
   showTrackLink?: boolean;
+  showDelete?: boolean;
 }
 
 export function QueueTokenCard({
@@ -24,8 +26,10 @@ export function QueueTokenCard({
   onServe,
   onComplete,
   onSkip,
+  onDelete,
   showActions = false,
   showTrackLink = false,
+  showDelete = false,
 }: QueueTokenCardProps) {
   const queueName = token.queues?.name ?? null;
   const businessName = token.businesses?.name ?? null;
@@ -96,13 +100,28 @@ export function QueueTokenCard({
           )}
         </div>
 
-        {showTrackLink && (
-          <Link href={`/track-token/${token.id}`}>
-            <Button variant="outline" size="sm" className="w-full">
-              <Ticket className="h-4 w-4 mr-2" />
-              Track Token
-            </Button>
-          </Link>
+        {(showTrackLink || (showDelete && onDelete)) && (
+          <div className="flex flex-col gap-2">
+            {showTrackLink && (
+              <Link href={`/track-token/${token.id}`}>
+                <Button variant="outline" size="sm" className="w-full">
+                  <Ticket className="h-4 w-4 mr-2" />
+                  Track Token
+                </Button>
+              </Link>
+            )}
+            {showDelete && onDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full"
+                onClick={() => onDelete(token.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Token
+              </Button>
+            )}
+          </div>
         )}
 
         {showActions && (
